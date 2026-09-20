@@ -110,6 +110,11 @@ details p{margin-top:10px;font-size:.95rem}
 .flaglist{margin:10px 0 0;padding:0;list-style:none;font-size:.92rem}
 .flaglist li{padding:6px 0}
 .alt .row{padding:10px 2px}
+.row .t span{display:block}
+.row .t .why-alt{color:var(--green);font-weight:700;font-size:.82rem}
+.why{font-size:.95rem;margin:8px 0 0}
+.summary{margin:6px 0 0;font-size:1rem;color:var(--muted)}
+.chip small{font-weight:400;opacity:.8}
 .dock{position:fixed;left:0;right:0;bottom:0;padding:12px 18px calc(12px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,var(--paper) 70%,transparent)}
 .dock .btn{max-width:504px;margin:0 auto}
 .spinner{width:36px;height:36px;border:4px solid var(--line);border-top-color:var(--ink);border-radius:50%;animation:spin 1s linear infinite;margin:60px auto 14px}
@@ -171,12 +176,17 @@ details p{margin-top:10px;font-size:.95rem}
 
 <script>
 const API = 'https://world.openfoodfacts.org';
-const FIELDS = ['code','product_name','product_name_en','generic_name','brands','image_front_small_url','image_front_url',
-  'nova_group','nutriscore_grade','nutriscore','nutriments','additives_tags','ingredients_text','ingredients_text_en',
+const FIELDS = ['code','product_name','product_name_en','generic_name','brands','image_front_small_url',
+  'nova_group','nova_groups_markers','nutriscore_grade','nutriscore','nutriments','additives_tags','ingredients_text','ingredients_text_en',
   'categories_tags','categories_hierarchy'].join(',');
+const SEARCH_FIELDS = ['code','product_name','product_name_en','generic_name','brands','image_front_small_url',
+  'nova_group','nutriscore_grade','nutriments','additives_tags','ingredients_text','ingredients_text_en','categories_tags'].join(',');
 const HIST_KEY = 'pantrycheck.history.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const joinList = a => a.length <= 1 ? (a[0] || '') : a.slice(0,-1).join(', ') + ' and ' + a[a.length-1];
+const cap = t => t ? t[0].toUpperCase() + t.slice(1) : t;
+const fmt = v => v < 10 ? +v.toFixed(1) : Math.round(v);
 
 /* ---------- Additives ---------- */
 const FLAG_GROUPS = [
@@ -198,76 +208,111 @@ const BENIGN = new Set(['e100','e101','e140','e160a','e160c','e162','e163','e170
   'e300','e301','e302','e304','e306','e307','e308','e309','e322','e325','e326','e327','e330','e331','e332','e333','e334',
   'e392','e400','e401','e406','e410','e412','e414','e415','e418','e440','e500','e501','e503','e504','e509','e516','e575',
   'e938','e941','e948']);
+const ADD_NAMES = {e100:'curcumin',e101:'riboflavin',e102:'tartrazine',e104:'quinoline yellow',e110:'sunset yellow',e120:'cochineal',
+  e122:'azorubine',e124:'ponceau 4R',e129:'allura red',e133:'brilliant blue',e150a:'caramel',e150c:'ammonia caramel',e150d:'sulphite ammonia caramel',
+  e160a:'beta-carotene',e160b:'annatto',e160c:'paprika extract',e162:'beetroot red',e170:'calcium carbonate',e171:'titanium dioxide',
+  e200:'sorbic acid',e202:'potassium sorbate',e211:'sodium benzoate',e220:'sulphur dioxide',e223:'sodium metabisulphite',e250:'sodium nitrite',
+  e252:'potassium nitrate',e260:'acetic acid',e270:'lactic acid',e281:'sodium propionate',e282:'calcium propionate',e290:'carbon dioxide',
+  e296:'malic acid',e300:'vitamin C',e306:'vitamin E',e307:'vitamin E',e319:'TBHQ',e320:'BHA',e321:'BHT',e322:'lecithin',
+  e330:'citric acid',e331:'sodium citrate',e339:'sodium phosphate',e341:'calcium phosphate',e401:'sodium alginate',e407:'carrageenan',
+  e410:'locust bean gum',e412:'guar gum',e414:'acacia gum',e415:'xanthan gum',e420:'sorbitol',e422:'glycerol',e433:'polysorbate 80',
+  e440:'pectin',e450:'diphosphates',e451:'triphosphates',e452:'polyphosphates',e466:'cellulose gum',e471:'mono- and diglycerides',
+  e472e:'DATEM',e476:'PGPR',e481:'sodium stearoyl lactylate',e500:'baking soda',e503:'ammonium carbonate',e621:'MSG',
+  e627:'disodium guanylate',e631:'disodium inosinate',e635:'ribonucleotides',e950:'acesulfame K',e951:'aspartame',e952:'cyclamate',
+  e954:'saccharin',e955:'sucralose',e960:'stevia',e965:'maltitol',e1422:'modified starch',e1442:'modified starch',e1450:'modified starch'};
+const stripRoman = c => c.replace(/(iii|ii|iv|i|v)$/,'');
+const additiveName = c => ADD_NAMES[c] || ADD_NAMES[stripRoman(c)] || '';
 
 function classifyAdditive(tag){
   const code = tag.replace(/^[a-z]{2}:/,'').toLowerCase();
-  const base = code.replace(/(i{1,3}|iv|v)$/,'');
+  const base = stripRoman(code);
   const label = code.startsWith('e') ? 'E' + code.slice(1) : code;
-  if (FLAGGED[code] || FLAGGED[base]) return {code:label, kind:'flag', why:FLAGGED[code] || FLAGGED[base], pts:8};
-  if (BENIGN.has(code) || BENIGN.has(base)) return {code:label, kind:'ok', pts:0};
-  return {code:label, kind:'minor', pts:2};
+  const name = additiveName(code);
+  if (FLAGGED[code] || FLAGGED[base]) return {code:label, name, kind:'flag', why:FLAGGED[code] || FLAGGED[base], pts:8};
+  if (BENIGN.has(code) || BENIGN.has(base)) return {code:label, name, kind:'ok', pts:0};
+  return {code:label, name, kind:'minor', pts:2};
 }
 
-/* ---------- Nutri-Score (2024 algorithm, estimate when OFF has none) ---------- */
-const countOver = (v, t) => t.filter(x => v > x).length;
+/* ---------- Nutrients ---------- */
 function isBeverage(p){
   const c = p.categories_tags || [];
   return c.includes('en:beverages') && !c.some(x => /milks|yogurt|dairies/.test(x));
 }
-function estimateNutriGrade(p){
+function nutr(p){
   const n = p.nutriments || {};
-  const num = k => (n[k] === undefined || n[k] === '' ? null : Number(n[k]));
-  const kj = num('energy-kj_100g') ?? num('energy_100g');
-  const sugar = num('sugars_100g'), sat = num('saturated-fat_100g'), salt = num('salt_100g');
-  if (sugar === null || sat === null || salt === null) return null;
-  if (isBeverage(p)){
-    if (sugar <= 1.5) return 'b';
-    if (sugar <= 4) return 'c';
-    if (sugar <= 6) return 'd';
-    return 'e';
+  const g = k => (n[k] === undefined || n[k] === '' || n[k] === null ? null : Number(n[k]));
+  return {kj: g('energy-kj_100g') ?? g('energy_100g'), sugar: g('sugars_100g'), sat: g('saturated-fat_100g'),
+    salt: g('salt_100g'), fat: g('fat_100g'), fibre: g('fiber_100g'), protein: g('proteins_100g'),
+    fvl: g('fruits-vegetables-legumes-estimate-from-ingredients_100g') ?? g('fruits-vegetables-nuts-estimate-from-ingredients_100g')};
+}
+const countOver = (v, t) => t.filter(x => v > x).length;
+function estimateNutriGrade(p){
+  const x = nutr(p);
+  if (x.sugar === null || x.sat === null || x.salt === null) return null;
+  if (isBeverage(p)) return x.sugar <= 1.5 ? 'b' : x.sugar <= 4 ? 'c' : x.sugar <= 6 ? 'd' : 'e';
+  const N = Math.min(10, countOver(x.kj ?? 0, [335,670,1005,1340,1675,2010,2345,2680,3015,3350]))
+          + Math.min(15, countOver(x.sugar, [3.4,6.8,10,14,17,20,24,27,31,34,37,41,44,48,51]))
+          + Math.min(10, countOver(x.sat, [1,2,3,4,5,6,7,8,9,10]))
+          + Math.min(20, countOver(x.salt, Array.from({length:20},(_,i)=>+(0.2*(i+1)).toFixed(1))));
+  const fib = countOver(x.fibre ?? 0, [3.0,4.1,5.2,6.3,7.4]);
+  const pro = N >= 11 ? 0 : countOver(x.protein ?? 0, [2.4,4.8,7.2,9.6,12,14,17]);
+  const fvl = x.fvl ?? 0, fv = fvl > 80 ? 5 : fvl > 60 ? 2 : fvl > 40 ? 1 : 0;
+  const sc = N - fib - pro - fv;
+  return sc <= 0 ? 'a' : sc <= 2 ? 'b' : sc <= 10 ? 'c' : sc <= 18 ? 'd' : 'e';
+}
+// What stands out in the nutrition panel, good and bad
+function nutrientNotes(p){
+  const x = nutr(p), drink = isBeverage(p), k = drink ? .5 : 1, per = `per 100${drink ? 'ml' : 'g'}`;
+  const bad = [], good = [];
+  if (x.sugar !== null){
+    if (x.sugar > 22.5*k) bad.push({t:`high in sugar (${fmt(x.sugar)}g ${per})`, short:'high sugar'});
+    else if (x.sugar > 10*k) bad.push({t:`fairly sugary (${fmt(x.sugar)}g ${per})`});
+    else if (x.sugar <= 5*k) good.push(`low in sugar (${fmt(x.sugar)}g)`);
   }
-  const fibre = num('fiber_100g') ?? 0, protein = num('proteins_100g') ?? 0;
-  const fvl = num('fruits-vegetables-legumes-estimate-from-ingredients_100g') ?? num('fruits-vegetables-nuts-estimate-from-ingredients_100g') ?? 0;
-  const N = Math.min(10, countOver(kj ?? 0, [335,670,1005,1340,1675,2010,2345,2680,3015,3350]))
-          + Math.min(15, countOver(sugar, [3.4,6.8,10,14,17,20,24,27,31,34,37,41,44,48,51]))
-          + Math.min(10, countOver(sat, [1,2,3,4,5,6,7,8,9,10]))
-          + Math.min(20, countOver(salt, Array.from({length:20},(_,i)=>+(0.2*(i+1)).toFixed(1))));
-  const fib = countOver(fibre, [3.0,4.1,5.2,6.3,7.4]);
-  const pro = N >= 11 ? 0 : countOver(protein, [2.4,4.8,7.2,9.6,12,14,17]);
-  const fv = fvl > 80 ? 5 : fvl > 60 ? 2 : fvl > 40 ? 1 : 0;
-  const s = N - fib - pro - fv;
-  return s <= 0 ? 'a' : s <= 2 ? 'b' : s <= 10 ? 'c' : s <= 18 ? 'd' : 'e';
+  if (x.sat !== null){
+    if (x.sat > 5*k) bad.push({t:`high in saturated fat (${fmt(x.sat)}g)`, short:'high saturated fat'});
+    else if (x.sat <= 1.5*k) good.push('low in saturated fat');
+  }
+  if (x.salt !== null){
+    if (x.salt > 1.5*k) bad.push({t:`high in salt (${fmt(x.salt)}g)`, short:'high salt'});
+    else if (x.salt <= .3*k) good.push('low in salt');
+  }
+  if (!drink && x.kj !== null && x.kj > 1675) bad.push({t:`high in kilojoules (${Math.round(x.kj)}kJ ${per})`});
+  if (!drink && x.fibre !== null){
+    if (x.fibre >= 6) good.push(`high in fibre (${fmt(x.fibre)}g)`);
+    else if (x.fibre >= 3) good.push('a source of fibre');
+  }
+  if (!drink && x.protein !== null && x.protein >= 10) good.push(`high in protein (${fmt(x.protein)}g)`);
+  if (x.fvl !== null && x.fvl >= 40) good.push('made mostly of fruit, veg or legumes');
+  return {bad, good};
 }
 
 /* ---------- Scoring ---------- */
 const NOVA_PTS = {1:34, 2:28, 3:18, 4:6};
-const NOVA_LABEL = {1:'Unprocessed or minimally processed', 2:'Processed culinary ingredient', 3:'Processed food', 4:'Ultra-processed food'};
+const NOVA_LABEL = {1:'Unprocessed or minimally processed', 2:'Cooking ingredient', 3:'Processed food', 4:'Ultra-processed food'};
 const NUTRI_PTS = {a:33, b:26, c:18, d:9, e:2};
 
 function scoreProduct(p){
   const parts = {};
-  // Processing
   const nova = Number(p.nova_group);
   parts.processing = NOVA_PTS[nova] !== undefined
     ? {pts:NOVA_PTS[nova], max:34, nova, label:`NOVA group ${nova}: ${NOVA_LABEL[nova]}`}
-    : {pts:null, max:34, label:'Not enough ingredient information to judge processing'};
-  // Nutrition
+    : {pts:null, max:34, label:'Unknown'};
   let grade = (p.nutriscore && p.nutriscore['2023'] && p.nutriscore['2023'].grade) || p.nutriscore_grade;
   let estimated = false;
-  if (!'abcde'.includes(grade || 'x') || !grade){ grade = estimateNutriGrade(p); estimated = !!grade; }
+  if (!grade || !'abcde'.includes(grade)){ grade = estimateNutriGrade(p); estimated = !!grade; }
   parts.nutrition = grade
-    ? {pts:NUTRI_PTS[grade], max:33, grade, label:`Nutri-Score ${grade.toUpperCase()}${estimated ? ' (estimated from the nutrition panel)' : ''}`}
-    : {pts:null, max:33, label:'Nutrition panel missing'};
-  // Additives
+    ? {pts:NUTRI_PTS[grade], max:33, grade, estimated, label:`Nutri-Score ${grade.toUpperCase()}${estimated ? ' (estimated)' : ''}`}
+    : {pts:null, max:33, label:'Unknown'};
   const hasIngredients = !!(p.ingredients_text || p.ingredients_text_en);
   const tags = p.additives_tags || [];
   if (hasIngredients || tags.length){
     const list = tags.map(classifyAdditive);
     const lost = list.reduce((s,a) => s + a.pts, 0);
     parts.additives = {pts:Math.max(0, 33 - lost), max:33, list,
-      label: list.length ? `${list.length} additive${list.length>1?'s':''} found` : 'No additives found'};
+      label: list.length ? `${list.length} additive${list.length>1?'s':''}` : 'None found'};
   } else {
-    parts.additives = {pts:null, max:33, list:[], label:'Ingredient list missing'};
+    parts.additives = {pts:null, max:33, list:[], label:'Unknown'};
   }
   const known = Object.values(parts).filter(x => x.pts !== null);
   if (parts.processing.pts === null && parts.nutrition.pts === null) return {total:null, parts};
@@ -275,6 +320,69 @@ function scoreProduct(p){
   let capped = false;
   if (nova === 4 && total > 60){ total = 60; capped = true; }
   return {total, parts, capped, partial: known.length < 3};
+}
+
+/* ---------- Explanations ---------- */
+const NOVA_WHY = {
+  1:'A whole or minimally processed food, like fresh, frozen or dried fruit and vegetables, plain milk, eggs, meat or oats. This is the best group.',
+  2:'A cooking ingredient such as oil, butter, sugar, salt or honey. Fine in small amounts when cooking, but not meant to be eaten on its own.',
+  3:'A processed food: a whole food with a few things added, like salt, sugar or oil. Think cheese, canned fish or simple bread.',
+  4:'An ultra-processed food, made mostly from industrial ingredients you wouldn’t use in a home kitchen. These are easy to overeat and linked to poorer health.'};
+function markerNames(p, g){
+  const mk = p.nova_groups_markers && p.nova_groups_markers[String(g)];
+  if (!Array.isArray(mk)) return [];
+  const out = [];
+  for (const it of mk){
+    const [type, tag] = it || [];
+    if (!tag) continue;
+    const c = tag.replace(/^[a-z]{2}:/,'');
+    const name = type === 'additives' ? (additiveName(c) || 'E' + c.slice(1)) : c.replace(/-/g,' ');
+    if (!out.includes(name)) out.push(name);
+    if (out.length >= 6) break;
+  }
+  return out;
+}
+function processingWhy(p, part){
+  if (part.pts === null) return 'There’s no ingredient list for this product in the database, so its processing level can’t be judged. The score uses the other parts only.';
+  const m = markerNames(p, part.nova);
+  if (part.nova === 4 && m.length) return `${NOVA_WHY[4]} Signs of ultra-processing in the ingredients: ${joinList(m)}.`;
+  if (part.nova === 3 && m.length) return `${NOVA_WHY[3]} This one has added ${joinList(m)}.`;
+  return NOVA_WHY[part.nova];
+}
+const GRADE_WHY = {a:'A very healthy nutrient balance.', b:'A good nutrient balance.', c:'An average nutrient balance.', d:'A poor nutrient balance.', e:'A very poor nutrient balance.'};
+function nutritionWhy(p, part){
+  if (part.pts === null) return 'The nutrition panel is missing from the database, so nutrition can’t be judged.';
+  const {bad, good} = nutrientNotes(p);
+  let t = GRADE_WHY[part.grade];
+  if (bad.length && good.length) t += ` It’s ${joinList(bad.map(b=>b.t))}, though it’s ${joinList(good)}.`;
+  else if (bad.length) t += ` It’s ${joinList(bad.map(b=>b.t))}.`;
+  else if (good.length) t += ` It’s ${joinList(good)}.`;
+  if (isBeverage(p) && part.grade !== 'a') t += ' For drinks, only water gets an A.';
+  if (part.estimated) t += ' Worked out from the nutrition panel, as the database had no official grade.';
+  return t;
+}
+function additivesWhy(part){
+  if (part.pts === null) return 'There’s no ingredient list in the database, so additives can’t be checked.';
+  const L = part.list;
+  if (!L.length) return 'No additives found in the ingredients, so full marks.';
+  const f = L.filter(a => a.kind === 'flag'), m = L.filter(a => a.kind === 'minor'), o = L.filter(a => a.kind === 'ok');
+  const bits = [];
+  if (f.length) bits.push(`${f.length} additive${f.length>1?'s':''} with health concerns (${f.length>1?'−8 each':'−8'})`);
+  if (m.length) bits.push(`${m.length} other additive${m.length>1?'s':''} (${m.length>1?'−2 each':'−2'})`);
+  let t = bits.length ? `Lost ${33 - part.pts} points for ${joinList(bits)}.` : 'Full marks.';
+  if (o.length) t += ` ${cap(joinList(o.map(a => a.name || a.code)))} ${o.length>1 ? 'are natural or harmless, so they cost' : 'is natural or harmless, so it costs'} nothing.`;
+  return t;
+}
+function summaryLine(p, s){
+  if (s.total === null) return '';
+  const r = [];
+  if (s.parts.processing.nova === 4) r.push('ultra-processing');
+  nutrientNotes(p).bad.filter(b => b.short).forEach(b => r.push(b.short));
+  const f = (s.parts.additives.list || []).filter(a => a.kind === 'flag').length;
+  if (f) r.push(`${f} additive${f>1?'s':''} of concern`);
+  if (r.length) return `Held back by ${joinList(r)}.`;
+  if (s.parts.processing.nova === 1 && s.parts.additives.pts === 33) return 'A whole food with nothing added.';
+  return s.total >= 70 ? 'Nothing major holding it back.' : '';
 }
 
 const band = s => s === null || s === undefined ? 'n' : s >= 70 ? 'g' : s >= 40 ? 'a' : 'r';
@@ -304,7 +412,6 @@ function show(view){
   window.scrollTo(0,0);
   if (view === 'home') renderHist();
 }
-
 const nameOf = p => p.product_name_en || p.product_name || p.generic_name || 'Unnamed product';
 const brandOf = p => (p.brands || '').split(',')[0].trim();
 
@@ -328,7 +435,7 @@ async function lookup(code){
   const s = scoreProduct(p);
   addHist({code:p.code, name:nameOf(p), brand:brandOf(p), img:p.image_front_small_url || '', score:s.total, time:Date.now()});
   renderResult(p, s);
-  findAlternatives(p, s.total);
+  findAlternatives(p, s);
 }
 
 function renderNotFound(code){
@@ -345,28 +452,25 @@ function renderError(code, msg){
   show('result');
 }
 
-function light(label, v, lo, hi, unit='g'){
-  if (v === undefined || v === null || v === '') return `<div class="light ln"><b>–</b><span>${label}</span></div>`;
-  v = Number(v);
+function light(label, v, lo, hi){
+  if (v === null) return `<div class="light ln"><b>–</b><span>${label}</span></div>`;
   const c = v <= lo ? 'lg' : v > hi ? 'lr' : 'la';
-  return `<div class="light ${c}"><b>${v < 10 ? +v.toFixed(1) : Math.round(v)}${unit}</b><span>${label}</span></div>`;
+  return `<div class="light ${c}"><b>${fmt(v)}g</b><span>${label}</span></div>`;
 }
-
-function partHTML(title, part){
+function partHTML(title, part, why){
   const pct = part.pts === null ? 0 : part.pts / part.max * 100;
   const b = part.pts === null ? 'n' : pct >= 70 ? 'g' : pct >= 40 ? 'a' : 'r';
   return `<div class="part">
     <div class="top"><h3>${title}</h3><b>${part.pts === null ? 'Unknown' : `${part.pts} / ${part.max}`}</b></div>
     <div class="meter"><i style="width:${pct}%;background:${COLOR[b]}"></i></div>
     <p class="muted small" style="margin:0">${esc(part.label)}</p>
+    <p class="why">${esc(why)}</p>
   </div>`;
 }
 
 function renderResult(p, s){
   const b = band(s.total);
-  const n = p.nutriments || {};
-  const drink = isBeverage(p);
-  const k = drink ? .5 : 1;
+  const x = nutr(p), drink = isBeverage(p), k = drink ? .5 : 1;
   const adds = s.parts.additives.list || [];
   const flagged = adds.filter(a => a.kind === 'flag');
   $('#result').innerHTML = `
@@ -375,72 +479,125 @@ function renderResult(p, s){
       <div class="sticker pop" style="background:${COLOR[b]}">
         <div><div class="num">${s.total ?? '?'}</div><div class="of">out of 100</div></div>
       </div>
-      <div><div class="verdict" style="color:${COLOR[b]}">${VERDICT[b]}</div></div>
+      <div><div class="verdict" style="color:${COLOR[b]}">${VERDICT[b]}</div><p class="summary">${esc(summaryLine(p, s))}</p></div>
     </div>
     <div class="prod">
       ${p.image_front_small_url ? `<img src="${esc(p.image_front_small_url)}" alt="">` : ''}
       <div><b>${esc(nameOf(p))}</b><span class="muted small">${esc(brandOf(p))}</span></div>
     </div>
-    ${s.capped ? `<div class="note warn">Capped at 60 because it's ultra-processed.</div>` : ''}
-    ${s.partial && s.total !== null ? `<div class="note warn">Some information is missing, so this score is based on partial data.</div>` : ''}
+    ${s.capped ? `<div class="note warn">Capped at 60 because it's ultra-processed. Without the cap it would score higher, but ultra-processed foods can't be everyday foods.</div>` : ''}
+    ${s.partial && s.total !== null ? `<div class="note warn">Some information is missing from the database, so this score is based on partial data.</div>` : ''}
 
     <h2>Why this score</h2>
-    ${partHTML('Processing', s.parts.processing)}
-    ${partHTML('Nutrition', s.parts.nutrition)}
-    ${partHTML('Additives', s.parts.additives)}
-    ${adds.length ? `<div class="chips">${adds.map(a => `<span class="chip ${a.kind==='flag'?'flag':''}">${esc(a.code)}</span>`).join('')}</div>` : ''}
-    ${flagged.length ? `<ul class="flaglist">${flagged.map(a => `<li><b>${esc(a.code)}</b>: ${esc(a.why)}</li>`).join('')}</ul>` : ''}
+    ${partHTML('Processing', s.parts.processing, processingWhy(p, s.parts.processing))}
+    ${partHTML('Nutrition', s.parts.nutrition, nutritionWhy(p, s.parts.nutrition))}
+    ${partHTML('Additives', s.parts.additives, additivesWhy(s.parts.additives))}
+    ${adds.length ? `<div class="chips">${adds.map(a => `<span class="chip ${a.kind==='flag'?'flag':''}">${esc(a.code)}${a.name ? ` <small>${esc(a.name)}</small>` : ''}</span>`).join('')}</div>` : ''}
+    ${flagged.length ? `<ul class="flaglist">${flagged.map(a => `<li><b>${esc(a.code)}${a.name ? ` (${esc(a.name)})` : ''}</b>: ${esc(a.why)}</li>`).join('')}</ul>` : ''}
 
     <h2>Per 100${drink ? 'ml' : 'g'}</h2>
     <div class="lights">
-      ${light('Sugar', n.sugars_100g, 5*k, 22.5*k)}
-      ${light('Sat fat', n['saturated-fat_100g'], 1.5*k, 5*k)}
-      ${light('Salt', n.salt_100g, .3*k, 1.5*k)}
-      ${light('Fat', n.fat_100g, 3*k, 17.5*k)}
+      ${light('Sugar', x.sugar, 5*k, 22.5*k)}
+      ${light('Sat fat', x.sat, 1.5*k, 5*k)}
+      ${light('Salt', x.salt, .3*k, 1.5*k)}
+      ${light('Fat', x.fat, 3*k, 17.5*k)}
     </div>
 
     <div class="alt" id="altBox">
       <h2>Healthier options</h2>
-      <p class="muted small" id="altStatus">Looking for better choices in the same category…</p>
+      <p class="muted small" id="altStatus">Looking for better choices sold in Australia…</p>
       <ul class="hist" id="altList"></ul>
     </div>`;
   show('result');
 }
 
+/* ---------- Alternatives ---------- */
+// Categories too broad to give sensible swaps (e.g. "cereals and potatoes" would suggest flour for a breakfast cereal)
+const GENERIC_CATS = new Set(['en:plant-based-foods-and-beverages','en:plant-based-foods','en:foods','en:groceries',
+  'en:cereals-and-potatoes','en:cereals-and-their-products','en:fruits-and-vegetables-based-foods','en:meals',
+  'en:fermented-foods','en:food-additives','en:dietary-supplements','en:farming-products','en:dried-products',
+  'en:frozen-foods','en:canned-foods','en:breakfasts','en:beverages-and-beverages-preparations','en:condiments',
+  'en:animal-products','en:non-food-products','en:open-beauty-facts']);
 const catName = c => c.replace(/^[a-z]{2}:/,'').replace(/-/g,' ');
-async function findAlternatives(p, myScore){
-  const cats = (p.categories_hierarchy || p.categories_tags || []).filter(c => c.startsWith('en:')).slice(-2).reverse();
-  const status = () => $('#altStatus'), list = () => $('#altList');
-  if (!cats.length){ status() && (status().textContent = 'No category information for this product, so no alternatives to suggest.'); return; }
+const searchCache = new Map();
+let altToken = 0, lastAlt = null;
+
+async function searchCategory(cat, healthyOnly){
+  const key = cat + '|' + healthyOnly;
+  if (searchCache.has(key)) return searchCache.get(key);
+  const q = new URLSearchParams({categories_tags:cat, countries_tags_en:'australia', fields:SEARCH_FIELDS, page_size:'100', sort_by:'unique_scans_n'});
+  // Healthy pass: exclude Nutri-Score C, D, E and ungraded products server-side, so healthy but less-popular items make the list
+  if (healthyOnly) q.set('nutrition_grades_tags', '-c,-d,-e,-unknown,-not-applicable');
+  const r = await fetch(`${API}/api/v2/search?${q}`);
+  if (r.status === 429 || r.status === 503) { const e = new Error('busy'); e.busy = true; throw e; }
+  if (!r.ok) throw new Error('status ' + r.status);
+  const d = await r.json();
+  const prods = d.products || [];
+  searchCache.set(key, prods);
+  return prods;
+}
+
+function betterBecause(a, cur){
+  const r = [];
+  const cmp = (k, label) => { const x = a.parts[k].pts, y = cur.parts[k].pts; if (x !== null && y !== null && x > y) r.push(label); };
+  cmp('processing', 'less processed');
+  cmp('nutrition', 'better nutrition');
+  cmp('additives', 'fewer additives');
+  return cap(joinList(r));
+}
+
+async function findAlternatives(p, cur){
+  const token = ++altToken;
+  lastAlt = {p, cur};
+  const status = $('#altStatus'), list = $('#altList');
+  const myScore = cur.total ?? -1;
+  const hier = (p.categories_hierarchy && p.categories_hierarchy.length ? p.categories_hierarchy : p.categories_tags) || [];
+  const cats = hier.filter(c => c.startsWith('en:') && !GENERIC_CATS.has(c)).reverse().slice(0, 4);
+  if (!cats.length){ status.textContent = 'This product has no category in the database, so there’s nothing to compare it with.'; return; }
+
   const seen = new Set([p.code]);
-  let found = [];
-  for (const cat of cats){
-    try {
-      const r = await fetch(`${API}/api/v2/search?categories_tags=${encodeURIComponent(cat)}&countries_tags=en:australia&fields=${FIELDS}&page_size=50&sort_by=unique_scans_n`);
-      const d = await r.json();
-      for (const x of d.products || []){
-        if (!x.code || seen.has(x.code)) continue;
-        seen.add(x.code);
-        const s = scoreProduct(x);
-        if (s.total !== null && !s.partial && s.total > (myScore ?? 0) + 4) found.push({x, s, cat});
-      }
-    } catch { /* try next category */ }
-    if (found.length >= 3) break;
+  const found = [];
+  let errors = 0, busy = false, searched = 0;
+  for (let i = 0; i < cats.length && found.length < 6; i++){
+    const passes = i === 0 ? [true, false] : [true]; // healthy pass everywhere, plus a popular pass in the closest category
+    for (const healthy of passes){
+      try {
+        const prods = await searchCategory(cats[i], healthy);
+        searched++;
+        prods.forEach((x, idx) => {
+          if (!x.code || seen.has(x.code)) return;
+          seen.add(x.code);
+          const s = scoreProduct(x);
+          if (s.total === null || s.parts.processing.pts === null || s.parts.nutrition.pts === null) return;
+          if (s.total > myScore) found.push({x, s, cat:cats[i], depth:i, idx});
+        });
+      } catch (e) { errors++; if (e.busy) busy = true; }
+      if (token !== altToken) return; // a newer scan has started
+    }
   }
-  if (!status()) return; // user navigated away
-  found.sort((a,b) => b.s.total - a.s.total);
-  found = found.slice(0,5);
-  if (!found.length){
-    status().textContent = myScore >= 70 ? 'This is already one of the better choices in its category.' : `Couldn't find a higher-scoring ${catName(cats[0])} product sold in Australia.`;
+  // Closest category first, then highest score, then most popular
+  found.sort((a,b) => (a.depth - b.depth) || (b.s.total - a.s.total) || (a.idx - b.idx));
+  const top = found.slice(0, 6).sort((a,b) => b.s.total - a.s.total);
+
+  if (!top.length){
+    if (!searched){
+      status.innerHTML = `${busy ? 'The food database is busy right now.' : 'Couldn’t load alternatives.'} <button class="linkbtn" id="altRetry">Try again</button>`;
+    } else if (cur.total >= 70){
+      status.textContent = `This is already one of the best choices among ${catName(cats[0])}.`;
+    } else {
+      status.textContent = `No higher-scoring ${catName(cats[0])} sold in Australia are in the database yet.`;
+    }
     return;
   }
-  status().textContent = `Higher-scoring ${catName(found[0].cat)} sold in Australia:`;
-  list().innerHTML = found.map(({x,s}) => `
+  const cats_used = [...new Set(top.map(t => catName(t.cat)))];
+  status.textContent = `Higher-scoring ${joinList(cats_used)} sold in Australia:`;
+  list.innerHTML = top.map(({x, s}) => `
     <li><button class="row" data-code="${esc(x.code)}">
       ${x.image_front_small_url ? `<img src="${esc(x.image_front_small_url)}" alt="" loading="lazy">` : '<span class="noimg"></span>'}
-      <span class="t"><b>${esc(nameOf(x))}</b><span>${esc(brandOf(x))}</span></span>
+      <span class="t"><b>${esc(nameOf(x))}</b><span>${esc(brandOf(x))}</span><span class="why-alt">${esc(betterBecause(s, cur))}</span></span>
       <span class="pill ${band(s.total)}">${s.total}</span>
     </button></li>`).join('');
+  if (errors) list.insertAdjacentHTML('afterend', '<p class="muted small">Some categories couldn’t be searched, so there may be more options.</p>');
 }
 
 /* ---------- Scanner ---------- */
@@ -484,6 +641,7 @@ $('#manualBtn').onclick = () => { const v = $('#manualCode').value; $('#manualCo
 $('#manualCode').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); $('#manualBtn').click(); } });
 $('#clearHist').onclick = () => { if (confirm('Clear all recent scans?')){ saveHist([]); renderHist(); } };
 document.addEventListener('click', e => {
+  if (e.target.closest('#altRetry') && lastAlt){ $('#altStatus').textContent = 'Looking again…'; return findAlternatives(lastAlt.p, lastAlt.cur); }
   const row = e.target.closest('[data-code]');
   if (row) return lookup(row.dataset.code);
   if (e.target.closest('[data-home]')) return show('home');
