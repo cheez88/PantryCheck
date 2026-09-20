@@ -152,7 +152,7 @@ details p{margin-top:10px;font-size:.95rem}
       <input id="manualCode" inputmode="numeric" pattern="[0-9]*" placeholder="Or type the barcode number" aria-label="Barcode number">
       <button id="manualBtn" type="button">Check</button>
     </form>
-    <button class="linkbtn" id="noBarcode">No barcode? Photograph the label instead</button>
+    <button class="linkbtn" id="noBarcode">No barcode? Add the label details instead</button>
     <p id="camError" class="note bad hidden"></p>
 
     <h2>Recent scans</h2>
@@ -175,7 +175,7 @@ details p{margin-top:10px;font-size:.95rem}
       <p><b>Nutrition (33 points)</b> uses the 2024 Nutri-Score, which penalises sugar, saturated fat and salt, and rewards fibre, protein and fruit and vegetables.</p>
       <p><b>Additives (33 points)</b> loses 2 points for most additives and 8 points for additives with health concerns, like certain artificial colours, preservatives and sweeteners. Natural ones like citric acid and pectin cost nothing.</p>
       <p>Ultra-processed foods are capped at 60, so they can never show green. 70 and above is an everyday food, 40 to 69 is a sometimes food, and below 40 is a treat.</p>
-      <p>If a barcode isn't in the database, you can photograph the label instead. Claude reads the nutrition panel and ingredients, you check the numbers, and the result is saved on your phone for next time.</p>
+      <p>If a barcode isn't in the database, you can paste the label details from a shopping website, or photograph the label. Claude reads the nutrition panel and ingredients, you check the numbers, and the result is saved on your phone for next time.</p>
       <p class="muted">Product data comes from Open Food Facts, a free community database. Scores are a guide for making better choices, not medical advice.</p>
     </details>
   </section>
@@ -187,6 +187,7 @@ details p{margin-top:10px;font-size:.95rem}
   </section>
 
   <section id="label" class="hidden"></section>
+  <section id="paste" class="hidden"></section>
   <section id="review" class="hidden"></section>
 
   <!-- RESULT -->
@@ -464,7 +465,7 @@ function renderHist(){
 
 /* ---------- Views ---------- */
 function show(view){
-  ['home','loading','result','label','review'].forEach(v => $('#'+v).classList.toggle('hidden', v !== view));
+  ['home','loading','result','label','paste','review'].forEach(v => $('#'+v).classList.toggle('hidden', v !== view));
   $('#dock').classList.toggle('hidden', view !== 'result');
   window.scrollTo(0,0);
   if (view === 'home') renderHist();
@@ -508,7 +509,8 @@ function renderNotFound(code){
     <button class="back" data-home>‹ Back</button>
     <h2 style="margin-top:14px">Not found</h2>
     <p>Barcode ${esc(code)} isn't in the Open Food Facts database yet. Photograph the label and it'll be scored from that, then remembered on this phone.</p>
-    <button class="btn btn-main" data-label-code="${esc(code)}">Photograph the label</button>
+    <div class="stack"><button class="btn btn-main" data-paste-code="${esc(code)}">Paste the label details</button>
+    <button class="btn btn-ghost" data-label-code="${esc(code)}">Photograph the label</button></div>
     <p class="muted small" style="margin-top:14px">You can also <a href="${API}/cgi/product.pl?type=add&code=${encodeURIComponent(code)}" target="_blank" rel="noopener">add it on Open Food Facts</a> so it works for everyone.</p>`;
   show('result');
 }
@@ -556,7 +558,7 @@ function renderResult(p, s){
     </div>
     ${check.issues.length ? `<div class="note bad"><b>These numbers look unreliable, so this score may be wrong.</b><ul style="margin:6px 0 8px;padding-left:18px">${check.issues.map(i => `<li>${esc(i)}</li>`).join('')}</ul>${p.source === 'label'
       ? `<button class="linkbtn" data-edit-label>Check the numbers against the label</button>`
-      : `<button class="linkbtn" data-label-code="${esc(p.code)}" data-from-off>Photograph the label to fix it</button>`}</div>` : ''}
+      : `<button class="linkbtn" data-paste-code="${esc(p.code)}" data-from-off>Paste or photograph the label to fix it</button>`}</div>` : ''}
     ${p.source === 'label' ? `<div class="note info">Scored from label photos. <button class="linkbtn" data-edit-label>Edit details</button></div>` : ''}
     ${p.source !== 'label' && (s.partial || s.total === null) ? `<div class="note info">The database is missing some details for this product. <button class="linkbtn" data-label-code="${esc(p.code)}" data-from-off>Photograph the label to fill the gaps</button></div>` : ''}
     ${s.capped ? `<div class="note warn">Capped at 60 because it's ultra-processed. Without the cap it would score higher, but ultra-processed foods can't be everyday foods.</div>` : ''}
@@ -578,7 +580,7 @@ function renderResult(p, s){
     </div>
     ${p.source === 'label'
       ? `<button class="linkbtn" data-edit-label>Doesn't match the label? Edit the details</button>`
-      : `<button class="linkbtn" data-label-code="${esc(p.code)}" data-from-off>Doesn't match the label? Photograph it to correct the score</button>`}
+      : `<button class="linkbtn" data-paste-code="${esc(p.code)}" data-from-off>Doesn't match the label? Paste or photograph it to correct the score</button>`}
 
     <div class="alt" id="altBox">
       <h2>Healthier options</h2>
@@ -695,6 +697,7 @@ function startLabel(code, base){
     <h2 style="margin-top:14px">Photograph the label</h2>
     ${labelReady() ? '' : `<div class="note warn">Label reading isn’t set up on this phone yet. Go back, open “Label reading setup” and enter your Worker address and app token.</div>`}
     <p>Take a clear, flat photo of the nutrition panel and one of the ingredients. Add the front of the pack if you'd like the name filled in.</p>
+    <button class="linkbtn" data-paste-code="${esc(labelCtx.code)}">Shopping online? Paste the label text instead (free, no setup)</button>
     <div class="shots">${['Nutrition panel','Ingredients','Front of pack (optional)'].map((t,i) =>
       `<label class="shot" id="shot${i}"><input type="file" accept="image/*" data-slot="${i}"><span>${t}</span></label>`).join('')}</div>
     <p class="muted small">If the panel and ingredients fit in one photo, one is enough.</p>
@@ -784,6 +787,9 @@ function renderReview(L, code, base){
       ${[1,2,3,4].map(g => `<option value="${g}" ${nova === g ? 'selected' : ''}>Group ${g}: ${NOVA_LABEL[g]}</option>`).join('')}
     </select></div>
     ${f('rMarkers','Signs of ultra-processing, separated by commas',(L.ultra_processed_markers || []).join(', '),'')}
+    <div class="field"><label for="rCat">Food type (used to suggest healthier options)</label>
+      <input id="rCat" list="catList" autocapitalize="off" value="${esc((reviewCtx.category || '').replace(/^[a-z]{2}:/,'').replace(/-/g,' '))}" placeholder="e.g. breakfast cereals">
+      <datalist id="catList">${['breakfast cereals','muesli bars','sweet biscuits','crackers','chips and fries','yogurts','cheeses','milks','fruit juices','sodas','breads','pastas','sauces','chocolates','ice creams','frozen meals','canned soups','nuts','dried fruits','baby foods'].map(c => `<option value="${c}">`).join('')}</datalist></div>
     <div class="stack"><button class="btn btn-main" id="scoreLabel">Score it</button></div>`;
   show('review');
 }
@@ -797,7 +803,9 @@ function scoreFromReview(){
   const markers = val('rMarkers').split(',').map(s => s.trim()).filter(Boolean);
   const sodium = num('rSodium');
   const {code, base, category} = reviewCtx;
-  const cat = category || (base && base.categories_hierarchy && base.categories_hierarchy.slice(-1)[0]) || null;
+  const typed = val('rCat');
+  const cat = typed ? 'en:' + typed.toLowerCase().replace(/^en:/,'').trim().replace(/\s+/g,'-')
+    : category || (base && base.categories_hierarchy && base.categories_hierarchy.slice(-1)[0]) || null;
   const label = {product_name: val('rName') || null, brand: val('rBrand') || null, is_beverage: drink,
     per_100: {energy_kj:num('rKj'), carbohydrate_g:num('rCarb'), sugars_g:num('rSugar'), fat_saturated_g:num('rSat'), sodium_mg:sodium,
       fibre_g:num('rFibre'), protein_g:num('rProt'), fat_total_g:num('rFat')},
@@ -820,6 +828,129 @@ function scoreFromReview(){
   };
   putLabel(p);
   showProduct(p);
+}
+
+/* ---------- Paste label text ---------- */
+const UP_MARKERS = [
+  ['glucose syrup','glucose syrup'],['fructose syrup','fructose syrup'],['high fructose','high fructose syrup'],
+  ['corn syrup','corn syrup'],['maltodextrin','maltodextrin'],['dextrose','dextrose'],['invert sugar','invert sugar'],
+  ['hydrogenated','hydrogenated oil'],['hydrolysed','hydrolysed protein'],['hydrolyzed','hydrolysed protein'],
+  ['protein isolate','protein isolate'],['modified starch','modified starch'],['flavour enhancer','flavour enhancer'],
+  ['flavor enhancer','flavour enhancer'],['flavouring','flavouring'],['flavour','flavour'],['flavor','flavour'],
+  ['emulsifier','emulsifier'],['thickener','thickener'],['humectant','humectant'],['sweetener','sweetener'],
+  ['colour','colour'],['color','colour'],['anti-caking','anti-caking agent'],['anticaking','anti-caking agent'],
+  ['vegetable gum','vegetable gum'],['stabilis','stabiliser'],['stabiliz','stabiliser'],['yeast extract','yeast extract']
+];
+// Pull every number on a line, with its unit, ignoring percentages
+function numbersIn(line){
+  const out = [];
+  const re = /(\d[\d,]*(?:\.\d+)?)\s*(kj|kcal|cal|mg|ml|g)?\s*(%)?/gi;
+  let m;
+  while ((m = re.exec(line))){
+    if (m[3]) continue;
+    out.push({v: +m[1].replace(/,/g,''), unit: (m[2] || '').toLowerCase()});
+  }
+  return out;
+}
+function parseLabelText(text){
+  const warn = [];
+  const clean = text.replace(/\u00a0/g,' ').replace(/[\u2013\u2014]/g,'-');
+  const lower = clean.toLowerCase();
+  const lines = clean.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  const i100 = lower.search(/per\s*100\s*(g|ml)|\/\s*100\s*(g|ml)/);
+  const iServe = lower.search(/per\s*serv(e|ing)/);
+  const col = (i100 >= 0 && iServe >= 0 && iServe < i100) ? 1 : 0;
+  if (i100 < 0) warn.push('Couldn’t find a “per 100g” heading, so the first column of numbers was used — check the values.');
+  const isDrink = /per\s*100\s*ml|100ml|per\s*100\s*mL/i.test(clean);
+
+  const row = (match, units) => {
+    for (let i = 0; i < lines.length; i++){
+      if (!match(lines[i])) continue;
+      let nums = numbersIn(lines[i]).filter(n => !n.unit || units.includes(n.unit));
+      // Values sometimes sit on the lines below the label
+      for (let j = i + 1; j < Math.min(i + 4, lines.length) && nums.length < col + 1; j++){
+        if (/[a-z]{4,}/i.test(lines[j].replace(/kj|kcal|cal|mg|ml|g/gi,''))) break;
+        nums = nums.concat(numbersIn(lines[j]).filter(n => !n.unit || units.includes(n.unit)));
+      }
+      if (!nums.length) continue;
+      if (nums.length === 1 && col === 1) warn.push('Only one column of numbers was found — check they are the per 100g values.');
+      return nums[Math.min(col, nums.length - 1)];
+    }
+    return null;
+  };
+  const g = r => { const n = r; return n ? n.v : null; };
+  const noSat = l => !/saturat/i.test(l);
+  const energyRow = row(l => /energy/i.test(l), ['kj','kcal','cal']);
+  let energy = null;
+  if (energyRow) energy = energyRow.unit === 'cal' || energyRow.unit === 'kcal' ? Math.round(energyRow.v * 4.184) : energyRow.v;
+  const sodiumRow = row(l => /sodium/i.test(l), ['mg','g']);
+  let sodium = sodiumRow ? (sodiumRow.unit === 'g' ? sodiumRow.v * 1000 : sodiumRow.v) : null;
+  if (sodium === null){
+    const saltRow = row(l => /^[-*\s]*salt\b/i.test(l), ['g','mg']);
+    if (saltRow) sodium = Math.round((saltRow.unit === 'mg' ? saltRow.v / 1000 : saltRow.v) * 400);
+  }
+  const per_100 = {
+    energy_kj: energy,
+    protein_g: g(row(l => /protein/i.test(l), ['g'])),
+    fat_total_g: g(row(l => /fat/i.test(l) && noSat(l), ['g'])),
+    fat_saturated_g: g(row(l => /saturat/i.test(l), ['g'])),
+    carbohydrate_g: g(row(l => /carbohydrate/i.test(l) && !/sugar/i.test(l), ['g'])),
+    sugars_g: g(row(l => /sugar/i.test(l), ['g'])),
+    fibre_g: g(row(l => /fib(re|er)/i.test(l), ['g'])),
+    sodium_mg: sodium === null ? null : Math.round(sodium)
+  };
+
+  // Ingredients: everything after "Ingredients" up to the next section heading
+  let ing = null;
+  const im = clean.match(/ingredients?\s*(?:list)?\s*[:\-]\s*([\s\S]+?)(?=\n\s*(?:allergens?|contains|may contain|storage|nutrition|dietary|country of origin|manufactured|packed|serving|energy|per\s*100)\b|$)/i);
+  if (im) ing = im[1].replace(/\s+/g,' ').trim();
+  else warn.push('No ingredient list was found in the text, so additives and processing couldn’t be worked out.');
+
+  const codes = [];
+  if (ing){
+    const re = /\b(?:ins\s*)?(\d{3,4}[a-z]{0,2})\b(?!\s*%)/gi;
+    let m;
+    while ((m = re.exec(ing))){ const c = m[1].toLowerCase(); if (!codes.includes(c)) codes.push(c); }
+  }
+  const markers = [];
+  if (ing) UP_MARKERS.forEach(([needle, name]) => { if (ing.toLowerCase().includes(needle) && !markers.includes(name)) markers.push(name); });
+
+  let nova = null;
+  if (ing){
+    const items = ing.split(/,(?![^(]*\))/).length;
+    nova = (markers.length || codes.length) ? 4 : items <= 1 ? 1 : 3;
+    warn.push('Processing was worked out from the ingredient list — check it looks right.');
+  }
+  return {product_name:null, brand:null, is_beverage:isDrink, per_100, fruit_veg_legume_percent:null,
+    ingredients_text:ing, additive_codes:codes, nova_group:nova, ultra_processed_markers:markers,
+    category:null, notes:[...new Set(warn)].join(' ')};
+}
+
+function startPaste(code, base){
+  labelCtx = {code: code || ('label-' + Date.now()), shots:[null,null,null], base: base || null};
+  $('#paste').innerHTML = `
+    <button class="back" data-home>‹ Back</button>
+    <h2 style="margin-top:14px">Paste the label details</h2>
+    <p>On the product page, copy the nutrition information and the ingredients, then paste both here. Pasting the whole section is fine.</p>
+    <div class="field"><textarea id="pasteText" rows="12" placeholder="Nutrition Information&#10;Avg Quantity per Serving   Avg Quantity per 100g&#10;Energy   483kJ   1610kJ&#10;…&#10;&#10;Ingredients: …"></textarea></div>
+    <button class="btn btn-main" id="readPaste">Read the text</button>
+    <div id="pasteErr" class="note bad hidden"></div>
+    <div class="stack"><button class="linkbtn" data-photo-code="${esc(labelCtx.code)}">Or photograph the label instead</button></div>`;
+  show('paste');
+}
+function readPaste(){
+  const text = $('#pasteText').value.trim();
+  const err = $('#pasteErr');
+  if (text.length < 20){ err.textContent = 'Paste the nutrition information and ingredients first.'; err.classList.remove('hidden'); return; }
+  const L = parseLabelText(text);
+  const filled = Object.values(L.per_100).filter(v => v !== null).length;
+  if (!filled && !L.ingredients_text){
+    err.textContent = 'Couldn’t find any nutrition values or ingredients in that text. Try copying the nutrition table and the ingredients line again.';
+    err.classList.remove('hidden');
+    return;
+  }
+  err.classList.add('hidden');
+  renderReview(L, labelCtx.code, labelCtx.base);
 }
 
 /* ---------- Scanner ---------- */
@@ -862,7 +993,7 @@ $('#cancelScan').onclick = stopScan;
 $('#manualBtn').onclick = () => { const v = $('#manualCode').value; $('#manualCode').value = ''; lookup(v); };
 $('#manualCode').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); $('#manualBtn').click(); } });
 $('#clearHist').onclick = () => { if (confirm('Clear all recent scans?')){ saveHist([]); renderHist(); } };
-$('#noBarcode').onclick = () => startLabel(null);
+$('#noBarcode').onclick = () => startPaste(null);
 $('#setUrl').value = getSettings().url || '';
 $('#setToken').value = getSettings().token || '';
 $('#saveSetup').onclick = () => {
@@ -887,6 +1018,11 @@ document.addEventListener('change', async e => {
 });
 document.addEventListener('click', e => {
   if (e.target.closest('#readLabel')) return readLabel();
+  if (e.target.closest('#readPaste')) return readPaste();
+  const pc = e.target.closest('[data-paste-code]');
+  if (pc) return startPaste(pc.dataset.pasteCode, pc.hasAttribute('data-from-off') ? currentProduct : null);
+  const ph = e.target.closest('[data-photo-code]');
+  if (ph) return startLabel(ph.dataset.photoCode, labelCtx.base);
   if (e.target.closest('#scoreLabel')) return scoreFromReview();
   if (e.target.closest('[data-edit-label]') && currentProduct && currentProduct.label) return renderReview(currentProduct.label, currentProduct.code, null);
   const lc = e.target.closest('[data-label-code]');
