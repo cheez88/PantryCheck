@@ -115,6 +115,22 @@ details p{margin-top:10px;font-size:.95rem}
 .why{font-size:.95rem;margin:8px 0 0}
 .summary{margin:6px 0 0;font-size:1rem;color:var(--muted)}
 .chip small{font-weight:400;opacity:.8}
+.note.info{background:var(--card);border:1px solid var(--line)}
+.note .linkbtn{padding:0}
+.shots{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 8px}
+.shot{aspect-ratio:3/4;border:2px dashed var(--line);border-radius:14px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:.85rem;font-weight:700;padding:8px;cursor:pointer;overflow:hidden;position:relative;background:var(--card)}
+.shot input{position:absolute;opacity:0;width:1px;height:1px}
+.shot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.shot.has{border-style:solid;border-color:var(--green)}
+.shot:focus-within{outline:3px solid var(--green);outline-offset:2px}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.field label{font-weight:700;font-size:.9rem}
+.field input,.field textarea,.field select{padding:12px;border-radius:10px;border:2px solid var(--line);background:var(--card);width:100%}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.check{display:flex;gap:10px;align-items:center;margin-bottom:14px;font-weight:700}
+.check input{width:22px;height:22px}
+.stack{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.btn:disabled{opacity:.5;cursor:default}
 .dock{position:fixed;left:0;right:0;bottom:0;padding:12px 18px calc(12px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,var(--paper) 70%,transparent)}
 .dock .btn{max-width:504px;margin:0 auto}
 .spinner{width:36px;height:36px;border:4px solid var(--line);border-top-color:var(--ink);border-radius:50%;animation:spin 1s linear infinite;margin:60px auto 14px}
@@ -136,11 +152,21 @@ details p{margin-top:10px;font-size:.95rem}
       <input id="manualCode" inputmode="numeric" pattern="[0-9]*" placeholder="Or type the barcode number" aria-label="Barcode number">
       <button id="manualBtn" type="button">Check</button>
     </form>
+    <button class="linkbtn" id="noBarcode">No barcode? Photograph the label instead</button>
     <p id="camError" class="note bad hidden"></p>
 
     <h2>Recent scans</h2>
     <ul class="hist" id="histList"></ul>
     <button class="linkbtn hidden" id="clearHist">Clear history</button>
+
+    <details id="setupBox">
+      <summary>Label reading setup</summary>
+      <p>To score food from label photos, enter your Cloudflare Worker address and app token. Each phone needs this once.</p>
+      <div class="field"><label for="setUrl">Worker address</label><input id="setUrl" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://pantry-check-label.yourname.workers.dev"></div>
+      <div class="field"><label for="setToken">App token</label><input id="setToken" type="password" autocomplete="off"></div>
+      <button class="btn btn-ghost" id="saveSetup">Save setup</button>
+      <p class="muted small" id="setupStatus" style="margin-top:8px"></p>
+    </details>
 
     <details>
       <summary>How the score works</summary>
@@ -149,6 +175,7 @@ details p{margin-top:10px;font-size:.95rem}
       <p><b>Nutrition (33 points)</b> uses the 2024 Nutri-Score, which penalises sugar, saturated fat and salt, and rewards fibre, protein and fruit and vegetables.</p>
       <p><b>Additives (33 points)</b> loses 2 points for most additives and 8 points for additives with health concerns, like certain artificial colours, preservatives and sweeteners. Natural ones like citric acid and pectin cost nothing.</p>
       <p>Ultra-processed foods are capped at 60, so they can never show green. 70 and above is an everyday food, 40 to 69 is a sometimes food, and below 40 is a treat.</p>
+      <p>If a barcode isn't in the database, you can photograph the label instead. Claude reads the nutrition panel and ingredients, you check the numbers, and the result is saved on your phone for next time.</p>
       <p class="muted">Product data comes from Open Food Facts, a free community database. Scores are a guide for making better choices, not medical advice.</p>
     </details>
   </section>
@@ -158,6 +185,9 @@ details p{margin-top:10px;font-size:.95rem}
     <div class="spinner"></div>
     <p class="muted" style="text-align:center">Looking up this product…</p>
   </section>
+
+  <section id="label" class="hidden"></section>
+  <section id="review" class="hidden"></section>
 
   <!-- RESULT -->
   <section id="result" class="hidden"></section>
@@ -178,7 +208,7 @@ details p{margin-top:10px;font-size:.95rem}
 const API = 'https://world.openfoodfacts.org';
 const FIELDS = ['code','product_name','product_name_en','generic_name','brands','image_front_small_url',
   'nova_group','nova_groups_markers','nutriscore_grade','nutriscore','nutriments','additives_tags','ingredients_text','ingredients_text_en',
-  'categories_tags','categories_hierarchy'].join(',');
+  'categories_tags','categories_hierarchy','data_quality_errors_tags','last_modified_t'].join(',');
 const SEARCH_FIELDS = ['code','product_name','product_name_en','generic_name','brands','image_front_small_url',
   'nova_group','nutriscore_grade','nutriments','additives_tags','ingredients_text','ingredients_text_en','categories_tags'].join(',');
 const HIST_KEY = 'pantrycheck.history.v1';
@@ -242,7 +272,7 @@ function nutr(p){
   const n = p.nutriments || {};
   const g = k => (n[k] === undefined || n[k] === '' || n[k] === null ? null : Number(n[k]));
   return {kj: g('energy-kj_100g') ?? g('energy_100g'), sugar: g('sugars_100g'), sat: g('saturated-fat_100g'),
-    salt: g('salt_100g'), fat: g('fat_100g'), fibre: g('fiber_100g'), protein: g('proteins_100g'),
+    salt: g('salt_100g'), fat: g('fat_100g'), carbs: g('carbohydrates_100g'), fibre: g('fiber_100g'), protein: g('proteins_100g'),
     fvl: g('fruits-vegetables-legumes-estimate-from-ingredients_100g') ?? g('fruits-vegetables-nuts-estimate-from-ingredients_100g')};
 }
 const countOver = (v, t) => t.filter(x => v > x).length;
@@ -285,6 +315,33 @@ function nutrientNotes(p){
   if (!drink && x.protein !== null && x.protein >= 10) good.push(`high in protein (${fmt(x.protein)}g)`);
   if (x.fvl !== null && x.fvl >= 40) good.push('made mostly of fruit, veg or legumes');
   return {bad, good};
+}
+
+/* ---------- Data checks ---------- */
+// Spots nutrition numbers that can't be right. Can't catch a panel where every value is wrong in the same way
+// (e.g. all per-serve values entered as per 100g), which is what the "doesn't match the label" button is for.
+function checkData(p){
+  const x = nutr(p), issues = [];
+  const has = (...v) => v.every(n => n !== null);
+  if (has(x.sugar, x.carbs) && x.sugar > x.carbs + 0.5) issues.push(`Sugar (${fmt(x.sugar)}g) is higher than total carbohydrate (${fmt(x.carbs)}g).`);
+  if (has(x.sat, x.fat) && x.sat > x.fat + 0.2) issues.push(`Saturated fat (${fmt(x.sat)}g) is higher than total fat (${fmt(x.fat)}g).`);
+  const parts = [x.fat, x.carbs, x.protein, x.fibre, x.salt].filter(n => n !== null);
+  const sum = parts.reduce((a,b) => a + b, 0);
+  if (sum > 105) issues.push(`The nutrients add up to ${Math.round(sum)}g per 100g, which isn't possible.`);
+  if ([x.sugar, x.sat, x.fat, x.carbs, x.protein, x.fibre].some(n => n !== null && n < 0)) issues.push('Some nutrient values are negative.');
+  if (has(x.kj, x.fat, x.carbs, x.protein)){
+    const calc = 37*x.fat + 17*x.carbs + 17*x.protein + 8*(x.fibre ?? 0);
+    if (calc > 150){
+      const ratio = x.kj / calc;
+      if (ratio > 0.18 && ratio < 0.32) issues.push('The energy looks like it was entered in Calories instead of kilojoules.');
+      else if (ratio < 0.7 || ratio > 1.4) issues.push(`The energy (${Math.round(x.kj)}kJ) doesn't match the fat, carbs and protein (about ${Math.round(calc)}kJ). Some values may be per serve rather than per 100g.`);
+    }
+  }
+  if (!issues.length && p.source !== 'label' && (p.data_quality_errors_tags || []).some(t => /nutrition|energy|sugar|fat|salt/.test(t)))
+    issues.push('Open Food Facts has flagged errors in this product’s nutrition data.');
+  const year = p.last_modified_t ? new Date(p.last_modified_t * 1000).getFullYear() : null;
+  const stale = year && (new Date().getFullYear() - year) >= 4 ? year : null;
+  return {issues, stale};
 }
 
 /* ---------- Scoring ---------- */
@@ -358,7 +415,7 @@ function nutritionWhy(p, part){
   else if (bad.length) t += ` It’s ${joinList(bad.map(b=>b.t))}.`;
   else if (good.length) t += ` It’s ${joinList(good)}.`;
   if (isBeverage(p) && part.grade !== 'a') t += ' For drinks, only water gets an A.';
-  if (part.estimated) t += ' Worked out from the nutrition panel, as the database had no official grade.';
+  if (part.estimated) t += p.source === 'label' ? ' Worked out from the nutrition panel in your photo.' : ' Worked out from the nutrition panel, as the database had no official grade.';
   return t;
 }
 function additivesWhy(part){
@@ -407,7 +464,7 @@ function renderHist(){
 
 /* ---------- Views ---------- */
 function show(view){
-  ['home','loading','result'].forEach(v => $('#'+v).classList.toggle('hidden', v !== view));
+  ['home','loading','result','label','review'].forEach(v => $('#'+v).classList.toggle('hidden', v !== view));
   $('#dock').classList.toggle('hidden', view !== 'result');
   window.scrollTo(0,0);
   if (view === 'home') renderHist();
@@ -424,14 +481,22 @@ async function fetchProduct(code){
 }
 
 async function lookup(code){
-  code = String(code).replace(/\D/g,'');
+  code = String(code).trim();
+  if (!code.startsWith('label-')) code = code.replace(/\D/g,'');
   if (!code) return;
+  const saved = getLabel(code);
+  if (saved) return showProduct(saved);
+  if (code.startsWith('label-')) return renderNotFound(code);
   show('loading');
   let p;
   try { p = await fetchProduct(code); }
   catch { return renderError(code, "Couldn't reach the food database. Check your internet connection and try again."); }
   if (!p) return renderNotFound(code);
   p.code = p.code || code;
+  showProduct(p);
+}
+
+function showProduct(p){
   const s = scoreProduct(p);
   addHist({code:p.code, name:nameOf(p), brand:brandOf(p), img:p.image_front_small_url || '', score:s.total, time:Date.now()});
   renderResult(p, s);
@@ -442,8 +507,9 @@ function renderNotFound(code){
   $('#result').innerHTML = `
     <button class="back" data-home>‹ Back</button>
     <h2 style="margin-top:14px">Not found</h2>
-    <p>Barcode ${esc(code)} isn't in the Open Food Facts database yet.</p>
-    <p class="muted small">You can <a href="${API}/cgi/product.pl?type=add&code=${encodeURIComponent(code)}" target="_blank" rel="noopener">add it on Open Food Facts</a> so it works next time.</p>`;
+    <p>Barcode ${esc(code)} isn't in the Open Food Facts database yet. Photograph the label and it'll be scored from that, then remembered on this phone.</p>
+    <button class="btn btn-main" data-label-code="${esc(code)}">Photograph the label</button>
+    <p class="muted small" style="margin-top:14px">You can also <a href="${API}/cgi/product.pl?type=add&code=${encodeURIComponent(code)}" target="_blank" rel="noopener">add it on Open Food Facts</a> so it works for everyone.</p>`;
   show('result');
 }
 function renderError(code, msg){
@@ -468,7 +534,10 @@ function partHTML(title, part, why){
   </div>`;
 }
 
+let currentProduct = null;
 function renderResult(p, s){
+  currentProduct = p;
+  const check = checkData(p);
   const b = band(s.total);
   const x = nutr(p), drink = isBeverage(p), k = drink ? .5 : 1;
   const adds = s.parts.additives.list || [];
@@ -483,10 +552,15 @@ function renderResult(p, s){
     </div>
     <div class="prod">
       ${p.image_front_small_url ? `<img src="${esc(p.image_front_small_url)}" alt="">` : ''}
-      <div><b>${esc(nameOf(p))}</b><span class="muted small">${esc(brandOf(p))}</span></div>
+      <div><b>${esc(nameOf(p))}</b><span class="muted small">${esc(brandOf(p))}</span>${check.stale ? `<span class="muted small" style="display:block">Database entry last updated in ${check.stale}. Recipes can change.</span>` : ''}</div>
     </div>
+    ${check.issues.length ? `<div class="note bad"><b>These numbers look unreliable, so this score may be wrong.</b><ul style="margin:6px 0 8px;padding-left:18px">${check.issues.map(i => `<li>${esc(i)}</li>`).join('')}</ul>${p.source === 'label'
+      ? `<button class="linkbtn" data-edit-label>Check the numbers against the label</button>`
+      : `<button class="linkbtn" data-label-code="${esc(p.code)}" data-from-off>Photograph the label to fix it</button>`}</div>` : ''}
+    ${p.source === 'label' ? `<div class="note info">Scored from label photos. <button class="linkbtn" data-edit-label>Edit details</button></div>` : ''}
+    ${p.source !== 'label' && (s.partial || s.total === null) ? `<div class="note info">The database is missing some details for this product. <button class="linkbtn" data-label-code="${esc(p.code)}" data-from-off>Photograph the label to fill the gaps</button></div>` : ''}
     ${s.capped ? `<div class="note warn">Capped at 60 because it's ultra-processed. Without the cap it would score higher, but ultra-processed foods can't be everyday foods.</div>` : ''}
-    ${s.partial && s.total !== null ? `<div class="note warn">Some information is missing from the database, so this score is based on partial data.</div>` : ''}
+    ${s.partial && s.total !== null ? `<div class="note warn">This score is based on partial data.</div>` : ''}
 
     <h2>Why this score</h2>
     ${partHTML('Processing', s.parts.processing, processingWhy(p, s.parts.processing))}
@@ -502,6 +576,9 @@ function renderResult(p, s){
       ${light('Salt', x.salt, .3*k, 1.5*k)}
       ${light('Fat', x.fat, 3*k, 17.5*k)}
     </div>
+    ${p.source === 'label'
+      ? `<button class="linkbtn" data-edit-label>Doesn't match the label? Edit the details</button>`
+      : `<button class="linkbtn" data-label-code="${esc(p.code)}" data-from-off>Doesn't match the label? Photograph it to correct the score</button>`}
 
     <div class="alt" id="altBox">
       <h2>Healthier options</h2>
@@ -600,6 +677,151 @@ async function findAlternatives(p, cur){
   if (errors) list.insertAdjacentHTML('afterend', '<p class="muted small">Some categories couldn’t be searched, so there may be more options.</p>');
 }
 
+
+/* ---------- Label photos ---------- */
+const SET_KEY = 'pantrycheck.settings.v1', LABEL_KEY = 'pantrycheck.labels.v1';
+const getSettings = () => { try { return JSON.parse(localStorage.getItem(SET_KEY)) || {}; } catch { return {}; } };
+const labelsAll = () => { try { return JSON.parse(localStorage.getItem(LABEL_KEY)) || {}; } catch { return {}; } };
+const getLabel = c => labelsAll()[c] || null;
+function putLabel(p){ const a = labelsAll(); a[p.code] = p; try { localStorage.setItem(LABEL_KEY, JSON.stringify(a)); } catch {} }
+const labelReady = () => { const s = getSettings(); return !!(s.url && s.token); };
+
+let labelCtx = {code:null, shots:[null,null,null], base:null};
+
+function startLabel(code, base){
+  labelCtx = {code: code || ('label-' + Date.now()), shots:[null,null,null], base: base || null};
+  $('#label').innerHTML = `
+    <button class="back" data-home>‹ Back</button>
+    <h2 style="margin-top:14px">Photograph the label</h2>
+    ${labelReady() ? '' : `<div class="note warn">Label reading isn’t set up on this phone yet. Go back, open “Label reading setup” and enter your Worker address and app token.</div>`}
+    <p>Take a clear, flat photo of the nutrition panel and one of the ingredients. Add the front of the pack if you'd like the name filled in.</p>
+    <div class="shots">${['Nutrition panel','Ingredients','Front of pack (optional)'].map((t,i) =>
+      `<label class="shot" id="shot${i}"><input type="file" accept="image/*" data-slot="${i}"><span>${t}</span></label>`).join('')}</div>
+    <p class="muted small">If the panel and ingredients fit in one photo, one is enough.</p>
+    <button class="btn btn-main" id="readLabel" disabled>Read label</button>
+    <div id="labelErr" class="note bad hidden"></div>`;
+  show('label');
+}
+
+// Shrink photos before sending: faster upload, lower cost, still sharp enough to read
+async function prepImage(file){
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.naturalWidth * scale);
+    c.height = Math.round(img.naturalHeight * scale);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return {media_type:'image/jpeg', data: c.toDataURL('image/jpeg', .85).split(',')[1]};
+  } finally { URL.revokeObjectURL(url); }
+}
+
+function labelError(msg){
+  const e = $('#labelErr');
+  if (!e) return;
+  e.textContent = msg;
+  e.classList.toggle('hidden', !msg);
+}
+
+async function readLabel(){
+  const st = getSettings();
+  const images = labelCtx.shots.filter(Boolean);
+  const btn = $('#readLabel');
+  btn.disabled = true; btn.textContent = 'Reading the label…';
+  labelError('');
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 90000);
+  try {
+    const r = await fetch(st.url, {method:'POST', signal:ctrl.signal,
+      headers:{'Content-Type':'application/json', 'X-App-Token':st.token}, body:JSON.stringify({images})});
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.label) throw new Error(d.error || `The label reader returned an error (${r.status}).`);
+    renderReview(d.label, labelCtx.code, labelCtx.base);
+  } catch (e) {
+    labelError(e.name === 'AbortError' ? 'Reading the label took too long. Try again, ideally with clearer photos.'
+      : e.message === 'Failed to fetch' || e.name === 'TypeError' ? 'Couldn’t reach the label reader. Check the Worker address in setup and your internet connection.'
+      : e.message);
+    btn.disabled = false; btn.textContent = 'Read label';
+  } finally { clearTimeout(timer); }
+}
+
+let reviewCtx = null;
+function renderReview(L, code, base){
+  reviewCtx = {code, base, category: L.category || null};
+  const n = L.per_100 || {};
+  const v = x => (x === null || x === undefined ? '' : x);
+  const name = L.product_name || (base && nameOf(base) !== 'Unnamed product' ? nameOf(base) : '');
+  const brand = L.brand || (base ? brandOf(base) : '');
+  const f = (id, label, val, attrs = 'inputmode="decimal"') => `<div class="field"><label for="${id}">${label}</label><input id="${id}" ${attrs} value="${esc(v(val))}"></div>`;
+  const nova = L.nova_group;
+  $('#review').innerHTML = `
+    <button class="back" data-home>‹ Cancel</button>
+    <h2 style="margin-top:14px">Check what was read</h2>
+    <p class="muted">Fix anything that doesn't match the label, then score it. Leave a box empty if it's not on the label.</p>
+    ${L.notes ? `<div class="note warn">${esc(L.notes)}</div>` : ''}
+    ${f('rName','Product name',name,'')}
+    ${f('rBrand','Brand',brand,'')}
+    <label class="check"><input type="checkbox" id="rDrink" ${L.is_beverage ? 'checked' : ''}> It's a drink (values per 100mL)</label>
+    <h3 style="margin:6px 0 10px">Per 100g or 100mL</h3>
+    <div class="grid2">
+      ${f('rKj','Energy (kJ)',n.energy_kj)}
+      ${f('rCarb','Carbohydrate (g)',n.carbohydrate_g)}
+      ${f('rSugar','Sugars (g)',n.sugars_g)}
+      ${f('rSat','Saturated fat (g)',n.fat_saturated_g)}
+      ${f('rSodium','Sodium (mg)',n.sodium_mg)}
+      ${f('rFibre','Dietary fibre (g)',n.fibre_g)}
+      ${f('rProt','Protein (g)',n.protein_g)}
+      ${f('rFat','Total fat (g)',n.fat_total_g)}
+      ${f('rFvl','Fruit, veg, legumes (%)',L.fruit_veg_legume_percent)}
+    </div>
+    <div class="field"><label for="rIng">Ingredients</label><textarea id="rIng" rows="5">${esc(v(L.ingredients_text))}</textarea></div>
+    ${f('rAdd','Additive numbers, separated by commas',(L.additive_codes || []).join(', '),'autocapitalize="off"')}
+    <div class="field"><label for="rNova">Processing</label><select id="rNova">
+      <option value="" ${!nova ? 'selected' : ''}>Can't tell (no ingredients)</option>
+      ${[1,2,3,4].map(g => `<option value="${g}" ${nova === g ? 'selected' : ''}>Group ${g}: ${NOVA_LABEL[g]}</option>`).join('')}
+    </select></div>
+    ${f('rMarkers','Signs of ultra-processing, separated by commas',(L.ultra_processed_markers || []).join(', '),'')}
+    <div class="stack"><button class="btn btn-main" id="scoreLabel">Score it</button></div>`;
+  show('review');
+}
+
+function scoreFromReview(){
+  const val = id => $('#' + id).value.trim();
+  const num = id => { const x = val(id).replace(',', '.'); return x === '' || isNaN(+x) ? null : +x; };
+  const drink = $('#rDrink').checked;
+  const nova = val('rNova') ? +val('rNova') : null;
+  const codes = val('rAdd').split(/[,\s]+/).map(s => s.toLowerCase().replace(/^e/, '')).filter(s => /^\d{3,4}[a-z]*$/.test(s));
+  const markers = val('rMarkers').split(',').map(s => s.trim()).filter(Boolean);
+  const sodium = num('rSodium');
+  const {code, base, category} = reviewCtx;
+  const cat = category || (base && base.categories_hierarchy && base.categories_hierarchy.slice(-1)[0]) || null;
+  const label = {product_name: val('rName') || null, brand: val('rBrand') || null, is_beverage: drink,
+    per_100: {energy_kj:num('rKj'), carbohydrate_g:num('rCarb'), sugars_g:num('rSugar'), fat_saturated_g:num('rSat'), sodium_mg:sodium,
+      fibre_g:num('rFibre'), protein_g:num('rProt'), fat_total_g:num('rFat')},
+    fruit_veg_legume_percent: num('rFvl'), ingredients_text: val('rIng') || null, additive_codes: codes,
+    nova_group: nova, ultra_processed_markers: markers, category: cat, notes: ''};
+  const p = {
+    code, source:'label', label,
+    product_name: label.product_name || 'Unnamed product', brands: label.brand || '',
+    image_front_small_url: base ? base.image_front_small_url || '' : '',
+    nova_group: nova,
+    nova_groups_markers: nova === 4 && markers.length ? {'4': markers.map(m => ['ingredients', 'en:' + m.toLowerCase().replace(/\s+/g,'-')])} : {},
+    nutriments: {'energy-kj_100g':label.per_100.energy_kj, carbohydrates_100g:label.per_100.carbohydrate_g, sugars_100g:label.per_100.sugars_g,
+      'saturated-fat_100g':label.per_100.fat_saturated_g, salt_100g: sodium === null ? null : +(sodium * 2.5 / 1000).toFixed(3),
+      fat_100g:label.per_100.fat_total_g, fiber_100g:label.per_100.fibre_g, proteins_100g:label.per_100.protein_g,
+      'fruits-vegetables-legumes-estimate-from-ingredients_100g':label.fruit_veg_legume_percent},
+    additives_tags: codes.map(c => 'en:e' + c),
+    ingredients_text: label.ingredients_text || '',
+    categories_tags: [...(cat ? [cat] : []), ...(drink ? ['en:beverages'] : [])],
+    categories_hierarchy: [...(drink ? ['en:beverages'] : []), ...(cat ? [cat] : [])]
+  };
+  putLabel(p);
+  showProduct(p);
+}
+
 /* ---------- Scanner ---------- */
 let scanner = null, scanning = false;
 async function startScan(){
@@ -640,7 +862,35 @@ $('#cancelScan').onclick = stopScan;
 $('#manualBtn').onclick = () => { const v = $('#manualCode').value; $('#manualCode').value = ''; lookup(v); };
 $('#manualCode').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); $('#manualBtn').click(); } });
 $('#clearHist').onclick = () => { if (confirm('Clear all recent scans?')){ saveHist([]); renderHist(); } };
+$('#noBarcode').onclick = () => startLabel(null);
+$('#setUrl').value = getSettings().url || '';
+$('#setToken').value = getSettings().token || '';
+$('#saveSetup').onclick = () => {
+  const url = $('#setUrl').value.trim(), token = $('#setToken').value.trim();
+  if (url && !/^https:\/\//.test(url)) { $('#setupStatus').textContent = 'The Worker address must start with https://'; return; }
+  try { localStorage.setItem(SET_KEY, JSON.stringify({url, token})); $('#setupStatus').textContent = url && token ? 'Saved. Label reading is ready on this phone.' : 'Saved, but both boxes are needed for label reading.'; }
+  catch { $('#setupStatus').textContent = 'Couldn’t save on this browser.'; }
+};
+document.addEventListener('change', async e => {
+  const inp = e.target.closest('input[data-slot]');
+  if (!inp || !inp.files || !inp.files[0]) return;
+  const i = +inp.dataset.slot, box = $('#shot' + i);
+  try {
+    const img = await prepImage(inp.files[0]);
+    labelCtx.shots[i] = img;
+    box.classList.add('has');
+    box.querySelector('img') && box.querySelector('img').remove();
+    box.insertAdjacentHTML('beforeend', `<img src="data:image/jpeg;base64,${img.data}" alt="Photo added">`);
+    labelError('');
+  } catch { labelError('Couldn’t open that photo. Try taking it again.'); }
+  $('#readLabel').disabled = !labelCtx.shots.some(Boolean) || !labelReady();
+});
 document.addEventListener('click', e => {
+  if (e.target.closest('#readLabel')) return readLabel();
+  if (e.target.closest('#scoreLabel')) return scoreFromReview();
+  if (e.target.closest('[data-edit-label]') && currentProduct && currentProduct.label) return renderReview(currentProduct.label, currentProduct.code, null);
+  const lc = e.target.closest('[data-label-code]');
+  if (lc) return startLabel(lc.dataset.labelCode, lc.hasAttribute('data-from-off') ? currentProduct : null);
   if (e.target.closest('#altRetry') && lastAlt){ $('#altStatus').textContent = 'Looking again…'; return findAlternatives(lastAlt.p, lastAlt.cur); }
   const row = e.target.closest('[data-code]');
   if (row) return lookup(row.dataset.code);
