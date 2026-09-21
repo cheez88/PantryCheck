@@ -72,7 +72,9 @@ details p{margin-top:10px;font-size:.95rem}
 /* scanner */
 .scanner{position:fixed;inset:0;background:#000;z-index:10;display:flex;flex-direction:column;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
 #reader{flex:1;width:100%;overflow:hidden}
-#reader video{object-fit:cover}
+#reader video{object-fit:cover;width:100%!important;height:100%!important}
+#reader img{display:none}
+#reader__dashboard_section_csr span{color:#fff}
 .scanner .bar{padding:16px 18px;display:flex;flex-direction:column;gap:10px}
 .scanner .hint{color:#fff;text-align:center;margin:0}
 .scanner .btn-ghost{color:#fff;border-color:#555}
@@ -954,13 +956,19 @@ function readPaste(){
 }
 
 /* ---------- Scanner ---------- */
-let scanner = null, scanning = false;
+let scanner = null, scanning = false, starting = false;
 async function startScan(){
+  if (scanning || starting) return;
+  starting = true;
   $('#camError').classList.add('hidden');
-  if (typeof Html5Qrcode === 'undefined'){ return camError('The scanner failed to load. Check your internet connection, or type the barcode instead.'); }
+  if (typeof Html5Qrcode === 'undefined'){ starting = false; return camError('The scanner failed to load. Check your internet connection, or type the barcode instead.'); }
+  await stopScan(true);
   $('#scanner').classList.remove('hidden');
+  $('#reader').innerHTML = '';
+  // Let the overlay lay out before starting, so the camera view is measured at the right size
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
   const F = Html5QrcodeSupportedFormats;
-  scanner = scanner || new Html5Qrcode('reader', {
+  scanner = new Html5Qrcode('reader', {
     formatsToSupport:[F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E],
     experimentalFeatures:{useBarCodeDetectorIfSupported:true}, verbose:false});
   try {
@@ -975,21 +983,28 @@ async function startScan(){
       }, () => {});
     scanning = true;
   } catch (e) {
-    $('#scanner').classList.add('hidden');
+    await stopScan(true);
     camError('Camera access was blocked or unavailable. Allow camera access for this site in your browser settings, or type the barcode below the button.');
-  }
+  } finally { starting = false; }
 }
-async function stopScan(){
+async function stopScan(keepQuiet){
   scanning = false;
-  try { if (scanner && scanner.isScanning) await scanner.stop(); } catch {}
-  $('#scanner').classList.add('hidden');
+  try {
+    if (scanner){
+      if (scanner.isScanning) await scanner.stop();
+      await scanner.clear();
+    }
+  } catch {}
+  scanner = null;
+  $('#reader').innerHTML = '';
+  if (!keepQuiet) $('#scanner').classList.add('hidden');
 }
 function camError(msg){ const e = $('#camError'); e.textContent = msg; e.classList.remove('hidden'); }
 
 /* ---------- Events ---------- */
 $('#scanBtn').onclick = startScan;
 $('#scanAgain').onclick = () => { show('home'); startScan(); };
-$('#cancelScan').onclick = stopScan;
+$('#cancelScan').onclick = () => stopScan();
 $('#manualBtn').onclick = () => { const v = $('#manualCode').value; $('#manualCode').value = ''; lookup(v); };
 $('#manualCode').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); $('#manualBtn').click(); } });
 $('#clearHist').onclick = () => { if (confirm('Clear all recent scans?')){ saveHist([]); renderHist(); } };
