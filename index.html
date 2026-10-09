@@ -38,7 +38,7 @@
 *,*::before,*::after{box-sizing:border-box}
 html,body{margin:0}
 body{background:var(--paper);color:var(--ink);font:17px/1.5 var(--body);-webkit-font-smoothing:antialiased}
-button,input{font:inherit;color:inherit}
+button,input,textarea,select{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:3px solid var(--green);outline-offset:2px;border-radius:6px}
 img{max-width:100%}
@@ -125,6 +125,12 @@ details p{margin-top:10px;font-size:.95rem}
 .why{font-size:.95rem;margin:8px 0 0}
 .summary{margin:6px 0 0;font-size:1rem;color:var(--muted)}
 .chip small{font-weight:400;opacity:.8}
+.preview{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.preview div{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 4px;text-align:center;font-size:.78rem;color:var(--muted)}
+.preview b{display:block;font-family:var(--display);font-size:1rem;color:var(--ink)}
+.preview .miss b{color:var(--muted)}
+#nutriPreview{margin-top:8px}
+#pasteNutri{white-space:pre;overflow-x:auto;tab-size:10;font-size:.9rem;line-height:1.6}
 .note.info{background:var(--card);border:1px solid var(--line)}
 .note .linkbtn{padding:0}
 .shots{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 8px}
@@ -950,7 +956,7 @@ const UP_MARKERS = [
 // Pull every number on a line, with its unit, ignoring percentages
 function numbersIn(line){
   const out = [];
-  const re = /(\d[\d,]*(?:\.\d+)?)\s*(kj|kcal|cal|mg|ml|g)?\s*(%)?/gi;
+  const re = /(?:<\s*)?(\d[\d,]*(?:\.\d+)?)\s*(kj|kcal|cal|mcg|mg|ml|g)?\s*(%)?/gi;
   let m;
   while ((m = re.exec(line))){
     if (m[3]) continue;
@@ -958,78 +964,168 @@ function numbersIn(line){
   }
   return out;
 }
-function parseLabelText(text){
-  const warn = [];
-  const clean = text.replace(/\u00a0/g,' ').replace(/[\u2013\u2014]/g,'-');
-  const lower = clean.toLowerCase();
-  const lines = clean.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-  const i100 = lower.search(/per\s*100\s*(g|ml)|\/\s*100\s*(g|ml)/);
-  const iServe = lower.search(/per\s*serv(e|ing)/);
-  const col = (i100 >= 0 && iServe >= 0 && iServe < i100) ? 1 : 0;
-  if (i100 < 0) warn.push('Couldn’t find a “per 100g” heading, so the first column of numbers was used — check the values.');
-  const isDrink = /per\s*100\s*ml|100ml|per\s*100\s*mL/i.test(clean);
 
-  const row = (match, units) => {
-    for (let i = 0; i < lines.length; i++){
-      if (!match(lines[i])) continue;
-      let nums = numbersIn(lines[i]).filter(n => !n.unit || units.includes(n.unit));
-      // Values sometimes sit on the lines below the label
-      for (let j = i + 1; j < Math.min(i + 4, lines.length) && nums.length < col + 1; j++){
-        if (/[a-z]{4,}/i.test(lines[j].replace(/kj|kcal|cal|mg|ml|g/gi,''))) break;
-        nums = nums.concat(numbersIn(lines[j]).filter(n => !n.unit || units.includes(n.unit)));
-      }
-      if (!nums.length) continue;
-      if (nums.length === 1 && col === 1) warn.push('Only one column of numbers was found — check they are the per 100g values.');
-      return nums[Math.min(col, nums.length - 1)];
+/* Nutrition table reader. Copes with:
+   - tables copied from a website (cells separated by tabs, or rebuilt from the copied table itself)
+   - pipe tables, or columns separated by wide spacing
+   - layouts where every cell sits on its own line
+   - "% Daily Intake" columns, which are skipped
+   - per-serve-only panels, converted using the serving size */
+const NUTRIENT_ROWS = [
+  ['energy',  l => /energy/.test(l)],
+  ['protein', l => /protein/.test(l)],
+  ['fat',     l => /\bfat/.test(l) && !/saturat|trans|mono|poly|omega/.test(l)],
+  ['sat',     l => /saturat/.test(l) && !/unsat|mono|poly/.test(l)],
+  ['carbs',   l => /carbohydrate/.test(l) && !/sugar/.test(l)],
+  ['sugars',  l => /sugar/.test(l) && !/added|free|alcohol/.test(l)],
+  ['fibre',   l => /fib(re|er)/.test(l)],
+  ['sodium',  l => /sodium/.test(l)],
+  ['salt',    l => /^[-–\s*]*salt\b/.test(l)]
+];
+const VALUE_CELL = /^(?:<|less than|lt)?\s*(\d[\d,]*(?:\.\d+)?)\s*(kj|kcal|cal|mcg|µg|mg|ml|g)?\b\s*(%)?/i;
+function cellValue(c){
+  const t = c.trim();
+  if (/^(-|–|—|n\/?a|nil|trace)$/i.test(t)) return {v: /trace|nil/i.test(t) ? 0 : null, unit:'', pct:false};
+  const m = t.match(VALUE_CELL);
+  if (!m) return null;
+  return {v: +m[1].replace(/,/g,''), unit: (m[2] || '').toLowerCase().replace('µg','mcg'), pct: !!m[3]};
+}
+const hasWords = c => /[a-z]{2,}/i.test(c.replace(/\b(kj|kcal|cal|mcg|mg|ml|g)\b/gi, '').replace(/less than|trace|nil|n\/a/gi, ''));
+
+function nutritionRows(text){
+  const lines = text.replace(/ /g,' ').replace(/[–—]/g,'-').split(/\r?\n/)
+    .map(l => l.replace(/^\s*\|/, '').replace(/\|\s*$/, '')).filter(l => l.trim() && !/^[\s|:\-]+$/.test(l));
+  const rows = [];
+  for (const line of lines){
+    let cells = /\t|\|/.test(line) ? line.split(/\t|\|/) : line.trim().split(/\s{2,}/);
+    cells = cells.map(c => c.trim());
+    const first = cells.findIndex(c => c !== '');
+    if (first < 0) continue;
+    cells = cells.slice(first);
+    while (cells.length && cells[cells.length - 1] === '') cells.pop();
+    // A single run of text like "Energy 483kJ 1610kJ": split the label from the numbers
+    if (cells.length === 1 && hasWords(cells[0]) && /\d/.test(cells[0])){
+      const m = cells[0].match(/^(.*?[a-z)\]])\s+((?:<\s*|less than\s*)?\d[\s\S]*)$/i);
+      if (m && hasWords(m[1])) cells = [m[1], ...m[2].split(/\s+(?=<?\s*\d)/)];
     }
-    return null;
+    const isLabel = hasWords(cells[0]) && !cellValue(cells[0]);
+    rows.push({label: isLabel ? cells[0] : null, cells: isLabel ? cells.slice(1) : cells, text: line});
+  }
+  return rows;
+}
+
+function parseNutrition(text){
+  const warn = [];
+  const rows = nutritionRows(text);
+  const find = key => rows.findIndex(r => r.label && NUTRIENT_ROWS.find(n => n[0] === key)[1](r.label.toLowerCase()));
+  const firstNutrient = Math.min(...NUTRIENT_ROWS.map(n => find(n[0])).filter(i => i >= 0), rows.length);
+
+  // Column headings, in order, from the lines above the first nutrient
+  const headText = rows.slice(0, firstNutrient).map(r => r.text).join('\n');
+  const cols = [];
+  // "% Daily Intake per serve" is one column, so the % patterns swallow a trailing "per serve"
+  const re = /(?:%\s*(?:daily\s*intake|r?di)\b|daily\s*intake)\*?(?:\s*(?:\(\s*)?per\s*serv(?:e|ing)\b)?|(?:per|\/)\s*100\s*(g|ml)\b|per\s*serv(?:e|ing)\b|per\s*\d+(?:\.\d+)?\s*(?:g|ml)\b/gi;
+  let m;
+  while ((m = re.exec(headText))){
+    const t = m[0].toLowerCase();
+    cols.push(/%|daily/.test(t) ? 'pct' : /100\s*(g|ml)/.test(t) ? 'p100' : 'serve');
+  }
+  const valueCols = cols.filter(c => c !== 'pct');
+  let idx = valueCols.indexOf('p100');
+  const isDrink = /(per|\/)\s*100\s*ml/i.test(text);
+  const ss = text.match(/serving\s*size\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*(g|ml)/i);
+  let factor = 1;
+  if (idx < 0 && valueCols.includes('serve')){
+    idx = valueCols.indexOf('serve');
+    if (ss){ factor = 100 / +ss[1]; warn.push(`Only per-serve values were found, so they were converted to per 100${ss[2].toLowerCase()} using the ${ss[1]}${ss[2].toLowerCase()} serving size.`); }
+    else warn.push('Only per-serve values were found and no serving size, so check these numbers against the per 100g column on the pack.');
+  }
+  let guessed = false;
+
+  // Values for a nutrient: on its own row, or (when every cell is on its own line) on the lines below
+  const valuesFor = key => {
+    const i = find(key);
+    if (i < 0) return null;
+    let cells = rows[i].cells.slice();
+    for (let j = i + 1; j < rows.length && !rows[j].label && cells.filter(Boolean).length < Math.max(valueCols.length, 1) + cols.filter(c => c === 'pct').length; j++)
+      cells = cells.concat(rows[j].cells);
+    let vals = cells.map(cellValue).filter(v => v && !v.pct);
+    if (key === 'energy'){
+      const kj = vals.filter(v => v.unit === 'kj');
+      if (kj.length) vals = kj;
+      else if (/kcal|cal/i.test(rows[i].label)) vals = vals.map(v => ({...v, unit:'cal'}));
+    }
+    if (!vals.length) return null;
+    let pick;
+    if (idx >= 0 && vals.length === valueCols.length) pick = vals[idx];
+    else if (idx >= 0 && vals.length > idx) pick = vals[idx];
+    else if (vals.length >= 2){ pick = vals[1]; guessed = true; }   // no headings: Australian panels list per serve, then per 100
+    else { pick = vals[0]; guessed = true; }
+    if (!pick || pick.v === null) return null;
+    let unit = pick.unit || (rows[i].label.match(/\((kj|kcal|cal|mg|g|ml)\)/i) || [,''])[1].toLowerCase();
+    return {v: pick.v * factor, unit};
   };
-  const g = r => { const n = r; return n ? n.v : null; };
-  const noSat = l => !/saturat/i.test(l);
-  const energyRow = row(l => /energy/i.test(l), ['kj','kcal','cal']);
-  let energy = null;
-  if (energyRow) energy = energyRow.unit === 'cal' || energyRow.unit === 'kcal' ? Math.round(energyRow.v * 4.184) : energyRow.v;
-  const sodiumRow = row(l => /sodium/i.test(l), ['mg','g']);
-  let sodium = sodiumRow ? (sodiumRow.unit === 'g' ? sodiumRow.v * 1000 : sodiumRow.v) : null;
+
+  const gram = key => { const x = valuesFor(key); return x ? +(x.unit === 'mg' ? x.v / 1000 : x.v).toFixed(2) : null; };
+  const e = valuesFor('energy');
+  const energy = e ? Math.round(/cal/.test(e.unit) ? e.v * 4.184 : e.v) : null;
+  const so = valuesFor('sodium');
+  let sodium = so ? (so.unit === 'g' ? so.v * 1000 : so.v) : null;
   if (sodium === null){
-    const saltRow = row(l => /^[-*\s]*salt\b/i.test(l), ['g','mg']);
-    if (saltRow) sodium = Math.round((saltRow.unit === 'mg' ? saltRow.v / 1000 : saltRow.v) * 400);
+    const sa = valuesFor('salt');
+    if (sa) sodium = (sa.unit === 'mg' ? sa.v / 1000 : sa.v) * 400;
   }
-  const per_100 = {
-    energy_kj: energy,
-    protein_g: g(row(l => /protein/i.test(l), ['g'])),
-    fat_total_g: g(row(l => /fat/i.test(l) && noSat(l), ['g'])),
-    fat_saturated_g: g(row(l => /saturat/i.test(l), ['g'])),
-    carbohydrate_g: g(row(l => /carbohydrate/i.test(l) && !/sugar/i.test(l), ['g'])),
-    sugars_g: g(row(l => /sugar/i.test(l), ['g'])),
-    fibre_g: g(row(l => /fib(re|er)/i.test(l), ['g'])),
-    sodium_mg: sodium === null ? null : Math.round(sodium)
+  if (guessed && !cols.length) warn.push('The table had no column headings, so the second column was taken as per 100g. Check the numbers.');
+  else if (guessed) warn.push('Some rows didn’t line up with the column headings. Check the numbers.');
+  return {
+    is_beverage: isDrink, warn,
+    per_100: {energy_kj: energy, protein_g: gram('protein'), fat_total_g: gram('fat'), fat_saturated_g: gram('sat'),
+      carbohydrate_g: gram('carbs'), sugars_g: gram('sugars'), fibre_g: gram('fibre'),
+      sodium_mg: sodium === null ? null : Math.round(sodium)}
   };
+}
 
-  // Ingredients: everything after "Ingredients" up to the next section heading
-  let ing = null;
-  const im = clean.match(/ingredients?\s*(?:list)?\s*[:\-]\s*([\s\S]+?)(?=\n\s*(?:allergens?|contains|may contain|storage|nutrition|dietary|country of origin|manufactured|packed|serving|energy|per\s*100)\b|$)/i);
-  if (im) ing = im[1].replace(/\s+/g,' ').trim();
-  else warn.push('No ingredient list was found in the text, so additives and processing couldn’t be worked out.');
-
+function parseIngredients(text){
+  let ing = text.replace(/ /g,' ').replace(/[–—]/g,'-').trim();
+  ing = ing.replace(/^\s*ingredients?\s*(?:list)?\s*[:\-]?\s*/i, '');
+  // Stop at allergen or storage information
+  ing = ing.split(/\n\s*(?:allergens?|contains|may contain|may be present|storage|store in|country of origin|made in|manufactured|packed)\b|\.\s*(?:allergens?|contains|may contain)\b/i)[0];
+  ing = ing.replace(/\s+/g,' ').trim();
+  if (!ing) return null;
   const codes = [];
-  if (ing){
-    const re = /\b(?:ins\s*)?(\d{3,4}[a-z]{0,2})\b(?!\s*%)/gi;
-    let m;
-    while ((m = re.exec(ing))){ const c = m[1].toLowerCase(); if (!codes.includes(c)) codes.push(c); }
-  }
+  const re = /\b(?:ins\s*|e\s?)?(\d{3,4}(?:[a-f]|iii|ii|iv|i|v)?)\b(?!\s*%)/gi;
+  let m;
+  while ((m = re.exec(ing))){ const c = m[1].toLowerCase(); if (!codes.includes(c)) codes.push(c); }
+  const lower = ing.toLowerCase();
   const markers = [];
-  if (ing) UP_MARKERS.forEach(([needle, name]) => { if (ing.toLowerCase().includes(needle) && !markers.includes(name)) markers.push(name); });
+  UP_MARKERS.forEach(([needle, name]) => { if (lower.includes(needle) && !markers.includes(name)) markers.push(name); });
+  const items = ing.split(/,(?![^(]*\))/).length;
+  const nova = (markers.length || codes.length) ? 4 : items <= 1 ? 1 : 3;
+  return {ingredients_text: ing, additive_codes: codes, ultra_processed_markers: markers, nova_group: nova};
+}
 
-  let nova = null;
-  if (ing){
-    const items = ing.split(/,(?![^(]*\))/).length;
-    nova = (markers.length || codes.length) ? 4 : items <= 1 ? 1 : 3;
-    warn.push('Processing was worked out from the ingredient list — check it looks right.');
-  }
-  return {product_name:null, brand:null, is_beverage:isDrink, per_100, fruit_veg_legume_percent:null,
-    ingredients_text:ing, additive_codes:codes, nova_group:nova, ultra_processed_markers:markers,
-    category:null, notes:[...new Set(warn)].join(' ')};
+// When a table is copied from a web page, rebuild it with tabs between cells so the columns survive
+function tableFromHtml(html){
+  if (!/<t[rdh][\s>]/i.test(html)) return null;
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const rows = [...doc.querySelectorAll('tr')];
+  if (!rows.length) return null;
+  return rows.map(tr => [...tr.querySelectorAll('th,td')].map(c => c.textContent.replace(/\s+/g,' ').trim()).join('\t')).join('\n');
+}
+
+const PREVIEW_ITEMS = [['energy_kj','Energy','kJ'],['sugars_g','Sugars','g'],['fat_saturated_g','Sat fat','g'],['sodium_mg','Sodium','mg'],
+  ['fat_total_g','Fat','g'],['carbohydrate_g','Carbs','g'],['protein_g','Protein','g'],['fibre_g','Fibre','g']];
+function renderNutriPreview(){
+  const box = $('#nutriPreview'), text = $('#pasteNutri').value.trim();
+  if (!text){ box.innerHTML = ''; return; }
+  const n = parseNutrition(text);
+  const found = Object.values(n.per_100).filter(v => v !== null).length;
+  box.innerHTML = `<p class="small" style="margin:0 0 6px">${found ? `Read ${found} of 8 values, per 100${n.is_beverage ? 'mL' : 'g'}:` : 'No nutrition values found yet.'}</p>
+    ${found ? `<div class="preview">${PREVIEW_ITEMS.map(([k, label, u]) => {
+      const v = n.per_100[k];
+      return `<div class="${v === null ? 'miss' : ''}"><b>${v === null ? '–' : fmt(v) + u}</b>${label}</div>`;
+    }).join('')}</div>` : ''}
+    ${n.warn.length ? `<p class="small muted" style="margin:6px 0 0">${esc(n.warn.join(' '))}</p>` : ''}`;
 }
 
 function startPaste(code, base){
@@ -1037,26 +1133,57 @@ function startPaste(code, base){
   $('#paste').innerHTML = `
     <button class="back" data-home>‹ Back</button>
     <h2 style="margin-top:14px">Paste the label details</h2>
-    <p>On the product page, copy the nutrition information and the ingredients, then paste both here. Pasting the whole section is fine.</p>
-    <div class="field"><textarea id="pasteText" rows="12" placeholder="Nutrition Information&#10;Avg Quantity per Serving   Avg Quantity per 100g&#10;Energy   483kJ   1610kJ&#10;…&#10;&#10;Ingredients: …"></textarea></div>
-    <button class="btn btn-main" id="readPaste">Read the text</button>
+    <p>Copy each section from the product page and paste it into its box.</p>
+    <div class="field"><label for="pasteNutri">Nutrition information</label>
+      <p class="muted small" style="margin:0">Copy the whole table, including the “per serve” and “per 100g” headings.</p>
+      <textarea id="pasteNutri" rows="9" spellcheck="false" placeholder="Avg Quantity per Serving    Avg Quantity per 100g&#10;Energy    483kJ    1610kJ&#10;Protein    3.6g    12.0g&#10;…"></textarea>
+      <div id="nutriPreview"></div></div>
+    <div class="field"><label for="pasteIng">Ingredients</label>
+      <textarea id="pasteIng" rows="5" placeholder="Wholegrain wheat (97%), sugar, salt, barley malt extract, vitamins…"></textarea></div>
+    <button class="btn btn-main" id="readPaste">Check and score</button>
     <div id="pasteErr" class="note bad hidden"></div>
     <div class="stack"><button class="linkbtn" data-photo-code="${esc(labelCtx.code)}">Or photograph the label instead</button></div>`;
+  const nb = $('#pasteNutri');
+  nb.addEventListener('paste', e => {
+    const html = e.clipboardData && e.clipboardData.getData('text/html');
+    const table = html && tableFromHtml(html);
+    if (!table) return;
+    e.preventDefault();
+    const {selectionStart: a, selectionEnd: b, value} = nb;
+    nb.value = value.slice(0, a) + table + value.slice(b);
+    renderNutriPreview();
+  });
+  nb.addEventListener('input', renderNutriPreview);
   show('paste');
 }
 function readPaste(){
-  const text = $('#pasteText').value.trim();
+  let nText = $('#pasteNutri').value.trim(), iText = $('#pasteIng').value.trim();
   const err = $('#pasteErr');
-  if (text.length < 20){ err.textContent = 'Paste the nutrition information and ingredients first.'; err.classList.remove('hidden'); return; }
-  const L = parseLabelText(text);
-  const filled = Object.values(L.per_100).filter(v => v !== null).length;
-  if (!filled && !L.ingredients_text){
-    err.textContent = 'Couldn’t find any nutrition values or ingredients in that text. Try copying the nutrition table and the ingredients line again.';
+  // Both sections pasted into the nutrition box: split them at "Ingredients"
+  if (!iText){
+    const at = nText.search(/(^|\n)\s*ingredients?\s*(list)?\s*[:\-]/i);
+    if (at >= 0){ iText = nText.slice(at); nText = nText.slice(0, at); }
+  }
+  if (!nText && !iText){ err.textContent = 'Paste the nutrition information, the ingredients, or both.'; err.classList.remove('hidden'); return; }
+  const n = nText ? parseNutrition(nText) : null;
+  const ing = iText ? parseIngredients(iText) : null;
+  const found = n ? Object.values(n.per_100).filter(v => v !== null).length : 0;
+  if (!found && !ing){
+    err.textContent = 'Couldn’t find any nutrition values or ingredients. Try copying the nutrition table again, including its headings.';
     err.classList.remove('hidden');
     return;
   }
   err.classList.add('hidden');
-  renderReview(L, labelCtx.code, labelCtx.base);
+  const notes = n ? n.warn.slice() : [];
+  if (!n || !found) notes.push('No nutrition values were read, so fill them in from the pack.');
+  if (ing) notes.push('Processing was worked out from the ingredient list. Check it looks right.');
+  else notes.push('No ingredients were pasted, so additives and processing couldn’t be worked out.');
+  const empty = {energy_kj:null, protein_g:null, fat_total_g:null, fat_saturated_g:null, carbohydrate_g:null, sugars_g:null, fibre_g:null, sodium_mg:null};
+  renderReview({product_name:null, brand:null, is_beverage: n ? n.is_beverage : false,
+    per_100: n ? n.per_100 : empty, fruit_veg_legume_percent:null,
+    ingredients_text: ing ? ing.ingredients_text : null, additive_codes: ing ? ing.additive_codes : [],
+    nova_group: ing ? ing.nova_group : null, ultra_processed_markers: ing ? ing.ultra_processed_markers : [],
+    category:null, notes:[...new Set(notes)].join(' ')}, labelCtx.code, labelCtx.base);
 }
 
 /* ---------- Scanner ---------- */
@@ -1156,7 +1283,7 @@ document.addEventListener('click', e => {
 renderHist();
 
 /* ---------- Installable app ---------- */
-const APP_VERSION = '2026.10.09';
+const APP_VERSION = '2026.10.09.2';
 $('#appVersion').textContent = `App version ${APP_VERSION}`;
 const INSTALL_KEY = 'pantrycheck.installDismissed';
 const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
