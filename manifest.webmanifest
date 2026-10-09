@@ -1,16 +1,27 @@
 {
+  "id": "pantry-check",
   "name": "Pantry Check",
   "short_name": "Pantry Check",
   "description": "Scan a barcode to see how healthy a food is, out of 100.",
-  "start_url": "./",
+  "lang": "en-AU",
+  "start_url": "pantry-check.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#F4F6F1",
-  "theme_color": "#2F8F4E",
+  "theme_color": "#F4F6F1",
+  "categories": ["food", "health", "lifestyle"],
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Scan a barcode",
+      "short_name": "Scan",
+      "url": "pantry-check.html?scan=1",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
   ]
 }

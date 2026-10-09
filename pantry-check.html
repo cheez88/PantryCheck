@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F4F6F1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121C17" media="(prefers-color-scheme: dark)">
+<title>Pantry Check</title>
+<link rel="icon" href="icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pantry Check">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+:root{
+  --paper:#F4F6F1; --card:#FFFFFF; --ink:#17261E; --muted:#5B6961; --line:#DCE3DB;
+  --green:#2F8F4E; --amber:#D9981A; --red:#CF4337;
+  --tint-green:#E2F1E6; --tint-amber:#FAF0D8; --tint-red:#FAE2DF;
+  --display:"Bricolage Grotesque", "Arial Rounded MT Bold", system-ui, sans-serif;
+  --body:"Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#121C17; --card:#1A2821; --ink:#E8EFE9; --muted:#A0AEA5; --line:#2B3B33;
+    --green:#4CB36D; --amber:#E6AE3A; --red:#E0645A;
+    --tint-green:#1F3A28; --tint-amber:#3A3120; --tint-red:#3E2522;
+  }
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font:17px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--green);outline-offset:2px;border-radius:6px}
+img{max-width:100%}
+.wrap{max-width:540px;margin:0 auto;padding:20px 18px 120px}
+h1,h2,h3{font-family:var(--display);line-height:1.1;margin:0}
+h1{font-size:2.6rem;font-weight:800;letter-spacing:-.02em}
+h2{font-size:1.35rem;font-weight:800;margin:32px 0 12px}
+h3{font-size:1.05rem;font-weight:600}
+p{margin:0 0 10px}
+.muted{color:var(--muted)}
+.small{font-size:.9rem}
+.hidden{display:none!important}
+
+/* home */
+.intro{margin:8px 0 22px;color:var(--muted);max-width:32ch}
+.btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;border:0;border-radius:16px;padding:18px;font-weight:700;font-size:1.1rem}
+.btn-main{background:var(--ink);color:var(--paper)}
+.btn-ghost{background:transparent;border:2px solid var(--line)}
+.manual{display:flex;gap:8px;margin-top:12px}
+.manual input{flex:1;min-width:0;padding:14px;border-radius:12px;border:2px solid var(--line);background:var(--card)}
+.manual button{padding:0 18px;border-radius:12px;border:2px solid var(--line);background:var(--card);font-weight:700}
+.hist{list-style:none;margin:0;padding:0}
+.hist li{border-top:1px solid var(--line)}
+.hist li:last-child{border-bottom:1px solid var(--line)}
+.row{display:flex;align-items:center;gap:12px;width:100%;padding:12px 2px;background:none;border:0;text-align:left}
+.row img,.row .noimg{width:44px;height:44px;border-radius:10px;object-fit:contain;background:var(--card);flex:none}
+.row .t{flex:1;min-width:0}
+.row .t b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .t span{font-size:.85rem;color:var(--muted)}
+.pill{flex:none;min-width:44px;text-align:center;font-family:var(--display);font-weight:800;padding:4px 8px;border-radius:999px;color:#fff}
+.pill.old{opacity:.45}
+.g{background:var(--green)} .a{background:var(--amber)} .r{background:var(--red)} .n{background:var(--muted)}
+.empty{padding:18px;border:2px dashed var(--line);border-radius:14px;color:var(--muted)}
+details{margin-top:28px;border-top:1px solid var(--line);padding-top:14px}
+summary{font-weight:700;cursor:pointer}
+details p{margin-top:10px;font-size:.95rem}
+.linkbtn{background:none;border:0;color:var(--muted);text-decoration:underline;padding:6px 0;font-size:.9rem}
+
+/* scanner */
+.scanner{position:fixed;inset:0;background:#000;z-index:10;display:flex;flex-direction:column;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+#reader{flex:1;width:100%;overflow:hidden}
+#reader video{object-fit:cover;width:100%!important;height:100%!important}
+#reader img{display:none}
+#reader__dashboard_section_csr span{color:#fff}
+.scanner .bar{padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.scanner .hint{color:#fff;text-align:center;margin:0}
+.scanner .btn-ghost{color:#fff;border-color:#555}
+
+/* result */
+.back{background:none;border:0;padding:6px 0;font-weight:700;color:var(--muted)}
+.hero{display:flex;gap:20px;align-items:center;margin:14px 0 8px}
+.sticker{flex:none;width:150px;height:150px;border-radius:50%;display:grid;place-items:center;color:#fff;transform:rotate(-6deg);position:relative;box-shadow:0 6px 0 rgba(0,0,0,.12)}
+.sticker::after{content:"";position:absolute;inset:8px;border-radius:50%;border:2px dashed rgba(255,255,255,.55)}
+.sticker .num{font-family:var(--display);font-weight:800;font-size:4rem;line-height:1;letter-spacing:-.03em}
+.sticker .of{font-size:.85rem;opacity:.9;text-align:center;margin-top:-4px}
+.pop{animation:pop .45s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pop{from{transform:rotate(-20deg) scale(.4);opacity:0}to{transform:rotate(-6deg) scale(1);opacity:1}}
+@media (prefers-reduced-motion:reduce){.pop{animation:none}}
+.verdict{font-family:var(--display);font-weight:800;font-size:1.6rem;line-height:1.1}
+.prod{display:flex;gap:12px;align-items:center;margin-top:18px;padding:12px;background:var(--card);border-radius:14px}
+.prod img{width:64px;height:64px;object-fit:contain;border-radius:8px;flex:none}
+.prod b{display:block}
+.note{padding:12px 14px;border-radius:12px;margin-top:12px;font-size:.95rem}
+.note.warn{background:var(--tint-amber)}
+.note.bad{background:var(--tint-red)}
+.part{padding:14px 0;border-bottom:1px solid var(--line)}
+.part .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.part .top b{font-family:var(--display);font-weight:800}
+.meter{height:10px;background:var(--line);border-radius:6px;margin:8px 0;overflow:hidden}
+.meter i{display:block;height:100%;border-radius:6px}
+.lights{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.light{border-radius:12px;padding:10px 6px;text-align:center}
+.light b{display:block;font-family:var(--display);font-size:1.1rem}
+.light span{font-size:.8rem}
+.lg{background:var(--tint-green)} .la{background:var(--tint-amber)} .lr{background:var(--tint-red)} .ln{background:var(--card)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chip{padding:4px 10px;border-radius:999px;font-size:.85rem;background:var(--card);border:1px solid var(--line)}
+.chip.flag{background:var(--tint-red);border-color:transparent;font-weight:700}
+.flaglist{margin:10px 0 0;padding:0;list-style:none;font-size:.92rem}
+.flaglist li{padding:6px 0}
+.alt .row{padding:10px 2px}
+.row .t span{display:block}
+.row .t .why-alt{color:var(--green);font-weight:700;font-size:.82rem}
+.why{font-size:.95rem;margin:8px 0 0}
+.summary{margin:6px 0 0;font-size:1rem;color:var(--muted)}
+.chip small{font-weight:400;opacity:.8}
+.note.info{background:var(--card);border:1px solid var(--line)}
+.note .linkbtn{padding:0}
+.shots{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 8px}
+.shot{aspect-ratio:3/4;border:2px dashed var(--line);border-radius:14px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:.85rem;font-weight:700;padding:8px;cursor:pointer;overflow:hidden;position:relative;background:var(--card)}
+.shot input{position:absolute;opacity:0;width:1px;height:1px}
+.shot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.shot.has{border-style:solid;border-color:var(--green)}
+.shot:focus-within{outline:3px solid var(--green);outline-offset:2px}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.field label{font-weight:700;font-size:.9rem}
+.field input,.field textarea,.field select{padding:12px;border-radius:10px;border:2px solid var(--line);background:var(--card);width:100%}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.check{display:flex;gap:10px;align-items:center;margin-bottom:14px;font-weight:700}
+.check input{width:22px;height:22px}
+.stack{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.btn:disabled{opacity:.5;cursor:default}
+.toast{position:fixed;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top,0px));z-index:30;max-width:516px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:var(--ink);color:var(--paper);box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.toast button{margin-left:auto;flex:none;border:0;border-radius:10px;padding:8px 14px;font-weight:700;background:var(--paper);color:var(--ink)}
+.install{margin-top:16px}
+.install .row2{display:flex;gap:8px;margin-top:10px}
+.install .btn{padding:12px;font-size:1rem}
+.dock{position:fixed;left:0;right:0;bottom:0;padding:12px 18px calc(12px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,var(--paper) 70%,transparent)}
+.dock .btn{max-width:504px;margin:0 auto}
+.spinner{width:36px;height:36px;border:4px solid var(--line);border-top-color:var(--ink);border-radius:50%;animation:spin 1s linear infinite;margin:60px auto 14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HOME -->
+  <section id="home">
+    <h1>Pantry Check</h1>
+    <p class="intro">Scan a barcode to see how healthy a food is, out of 100.</p>
+    <button class="btn btn-main" id="scanBtn">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 8v8M10 8v8M14 8v8M17 8v8"/></svg>
+      Scan a barcode
+    </button>
+    <form class="manual" id="manualForm" onsubmit="return false">
+      <input id="manualCode" inputmode="numeric" pattern="[0-9]*" placeholder="Or type the barcode number" aria-label="Barcode number">
+      <button id="manualBtn" type="button">Check</button>
+    </form>
+    <button class="linkbtn" id="noBarcode">No barcode? Add the label details instead</button>
+    <p id="camError" class="note bad hidden"></p>
+    <p id="offlineNote" class="note warn hidden">You’re offline. Saved labels and products you’ve looked at before still open, but new barcodes need a connection.</p>
+    <div id="installBox" class="note info install hidden">
+      <b>Install Pantry Check</b>
+      <p id="installText" style="margin:4px 0 0"></p>
+      <div class="row2">
+        <button class="btn btn-main hidden" id="installBtn">Install app</button>
+        <button class="btn btn-ghost" id="installLater">Not now</button>
+      </div>
+    </div>
+
+    <h2>Recent scans</h2>
+    <ul class="hist" id="histList"></ul>
+    <button class="linkbtn hidden" id="clearHist">Clear history</button>
+
+    <details id="setupBox">
+      <summary>Label reading setup</summary>
+      <p>To score food from label photos, enter your Cloudflare Worker address and app token. Each phone needs this once.</p>
+      <div class="field"><label for="setUrl">Worker address</label><input id="setUrl" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://pantry-check-label.yourname.workers.dev"></div>
+      <div class="field"><label for="setToken">App token</label><input id="setToken" type="password" autocomplete="off"></div>
+      <button class="btn btn-ghost" id="saveSetup">Save setup</button>
+      <p class="muted small" id="setupStatus" style="margin-top:8px"></p>
+    </details>
+
+    <details>
+      <summary>How the score works</summary>
+      <p>Every food gets up to 100 points from three equal parts:</p>
+      <p><b>Processing (34 points)</b> uses the NOVA system. Fresh and whole foods score highest. Ultra-processed foods score 2 to 8, depending on how many ultra-processed ingredients they contain.</p>
+      <p><b>Nutrition (33 points)</b> uses the 2024 Nutri-Score, which penalises sugar, saturated fat and salt, and rewards fibre, protein and fruit and vegetables. It uses the points behind the grade, so two products with the same grade can still score differently.</p>
+      <p><b>Additives (33 points)</b> loses 2 points for most additives and 8 points for additives with health concerns, like certain artificial colours, preservatives and sweeteners. Natural ones like citric acid and pectin cost nothing.</p>
+      <p>75 and above is an everyday food, 40 to 74 is a sometimes food, and below 40 is a treat. Ultra-processed foods can score at most 74, so they can never show green.</p>
+      <p>If a barcode isn't in the database, you can paste the label details from a shopping website, or photograph the label. Claude reads the nutrition panel and ingredients, you check the numbers, and the result is saved on your phone for next time.</p>
+      <p class="muted">Product data comes from Open Food Facts, a free community database. Scores are a guide for making better choices, not medical advice.</p>
+      <p class="muted small" id="appVersion"></p>
+    </details>
+  </section>
+
+  <!-- LOADING -->
+  <section id="loading" class="hidden">
+    <div class="spinner"></div>
+    <p class="muted" style="text-align:center">Looking up this product…</p>
+  </section>
+
+  <section id="label" class="hidden"></section>
+  <section id="paste" class="hidden"></section>
+  <section id="review" class="hidden"></section>
+
+  <!-- RESULT -->
+  <section id="result" class="hidden"></section>
+</div>
+
+<div class="toast hidden" id="updateToast" role="status"><span>A new version is ready.</span><button id="updateBtn">Update</button></div>
+
+<div class="dock hidden" id="dock"><button class="btn btn-main" id="scanAgain">Scan another</button></div>
+
+<!-- SCANNER -->
+<div class="scanner hidden" id="scanner" role="dialog" aria-label="Barcode scanner">
+  <div id="reader"></div>
+  <div class="bar">
+    <p class="hint">Point the camera at the barcode</p>
+    <button class="btn btn-ghost" id="cancelScan">Cancel</button>
+  </div>
+</div>
+
+<script>
+const API = 'https://world.openfoodfacts.org';
+const FIELDS = ['code','product_name','product_name_en','generic_name','brands','image_front_small_url',
+  'nova_group','nova_groups_markers','nutriscore_grade','nutriscore_score','nutriscore','nutriments','additives_tags','ingredients_text','ingredients_text_en',
+  'categories_tags','categories_hierarchy','data_quality_errors_tags','last_modified_t'].join(',');
+const SEARCH_FIELDS = ['code','product_name','product_name_en','generic_name','brands','image_front_small_url',
+  'nova_group','nova_groups_markers','nutriscore_grade','nutriscore_score','nutriscore','nutriments','additives_tags','ingredients_text','ingredients_text_en','categories_tags'].join(',');
+const HIST_KEY = 'pantrycheck.history.v1';
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const joinList = a => a.length <= 1 ? (a[0] || '') : a.slice(0,-1).join(', ') + ' and ' + a[a.length-1];
+const cap = t => t ? t[0].toUpperCase() + t.slice(1) : t;
+const fmt = v => v < 10 ? +v.toFixed(1) : Math.round(v);
+
+/* ---------- Additives ---------- */
+const FLAG_GROUPS = [
+  {codes:['e102','e104','e110','e122','e124','e129'], why:'Artificial colour linked to hyperactivity in some children'},
+  {codes:['e150c','e150d'], why:'Caramel colour that can contain 4-MEI, a possible carcinogen'},
+  {codes:['e171'], why:'Titanium dioxide, banned as a food additive in the EU since 2022'},
+  {codes:['e249','e250','e251','e252'], why:'Nitrite or nitrate preservative, linked to bowel cancer risk in processed meat'},
+  {codes:['e210','e211','e212','e213'], why:'Benzoate preservative; can form benzene with vitamin C and may affect behaviour in children'},
+  {codes:['e220','e221','e222','e223','e224','e225','e226','e227','e228'], why:'Sulphite preservative that can trigger asthma'},
+  {codes:['e280','e281','e282','e283'], why:'Propionate bread preservative, linked in some studies to irritability in children'},
+  {codes:['e310','e319','e320','e321'], why:'Synthetic antioxidant with ongoing safety questions'},
+  {codes:['e338','e339','e340','e341','e450','e451','e452'], why:'Phosphate additive; high intake linked to heart and kidney concerns'},
+  {codes:['e407','e407a','e433','e466'], why:'Emulsifier or thickener linked to gut inflammation in animal studies'},
+  {codes:['e950','e951','e952','e954','e955','e961','e962'], why:'Artificial sweetener; the WHO advises against sweeteners for weight control'},
+];
+const FLAGGED = {};
+FLAG_GROUPS.forEach(g => g.codes.forEach(c => FLAGGED[c] = g.why));
+const BENIGN = new Set(['e100','e101','e140','e160a','e160c','e162','e163','e170','e260','e270','e290','e296','e297',
+  'e300','e301','e302','e304','e306','e307','e308','e309','e322','e325','e326','e327','e330','e331','e332','e333','e334',
+  'e392','e400','e401','e406','e410','e412','e414','e415','e418','e440','e500','e501','e503','e504','e509','e516','e575',
+  'e938','e941','e948']);
+const ADD_NAMES = {e100:'curcumin',e101:'riboflavin',e102:'tartrazine',e104:'quinoline yellow',e110:'sunset yellow',e120:'cochineal',
+  e122:'azorubine',e124:'ponceau 4R',e129:'allura red',e133:'brilliant blue',e150a:'caramel',e150c:'ammonia caramel',e150d:'sulphite ammonia caramel',
+  e160a:'beta-carotene',e160b:'annatto',e160c:'paprika extract',e162:'beetroot red',e170:'calcium carbonate',e171:'titanium dioxide',
+  e200:'sorbic acid',e202:'potassium sorbate',e211:'sodium benzoate',e220:'sulphur dioxide',e223:'sodium metabisulphite',e250:'sodium nitrite',
+  e252:'potassium nitrate',e260:'acetic acid',e270:'lactic acid',e281:'sodium propionate',e282:'calcium propionate',e290:'carbon dioxide',
+  e296:'malic acid',e300:'vitamin C',e306:'vitamin E',e307:'vitamin E',e319:'TBHQ',e320:'BHA',e321:'BHT',e322:'lecithin',
+  e330:'citric acid',e331:'sodium citrate',e339:'sodium phosphate',e341:'calcium phosphate',e401:'sodium alginate',e407:'carrageenan',
+  e410:'locust bean gum',e412:'guar gum',e414:'acacia gum',e415:'xanthan gum',e420:'sorbitol',e422:'glycerol',e433:'polysorbate 80',
+  e440:'pectin',e450:'diphosphates',e451:'triphosphates',e452:'polyphosphates',e466:'cellulose gum',e471:'mono- and diglycerides',
+  e472e:'DATEM',e476:'PGPR',e481:'sodium stearoyl lactylate',e500:'baking soda',e503:'ammonium carbonate',e621:'MSG',
+  e627:'disodium guanylate',e631:'disodium inosinate',e635:'ribonucleotides',e950:'acesulfame K',e951:'aspartame',e952:'cyclamate',
+  e954:'saccharin',e955:'sucralose',e960:'stevia',e965:'maltitol',e1422:'modified starch',e1442:'modified starch',e1450:'modified starch'};
+const stripRoman = c => c.replace(/(iii|ii|iv|i|v)$/,'');
+const additiveName = c => ADD_NAMES[c] || ADD_NAMES[stripRoman(c)] || '';
+
+function classifyAdditive(tag){
+  const code = tag.replace(/^[a-z]{2}:/,'').toLowerCase();
+  const base = stripRoman(code);
+  const label = code.startsWith('e') ? 'E' + code.slice(1) : code;
+  const name = additiveName(code);
+  if (FLAGGED[code] || FLAGGED[base]) return {code:label, name, kind:'flag', why:FLAGGED[code] || FLAGGED[base], pts:8};
+  if (BENIGN.has(code) || BENIGN.has(base)) return {code:label, name, kind:'ok', pts:0};
+  return {code:label, name, kind:'minor', pts:2};
+}
+
+/* ---------- Nutrients ---------- */
+function isBeverage(p){
+  const c = p.categories_tags || [];
+  return c.includes('en:beverages') && !c.some(x => /milks|yogurt|dairies/.test(x));
+}
+function nutr(p){
+  const n = p.nutriments || {};
+  const g = k => (n[k] === undefined || n[k] === '' || n[k] === null ? null : Number(n[k]));
+  return {kj: g('energy-kj_100g') ?? g('energy_100g'), sugar: g('sugars_100g'), sat: g('saturated-fat_100g'),
+    salt: g('salt_100g'), fat: g('fat_100g'), carbs: g('carbohydrates_100g'), fibre: g('fiber_100g'), protein: g('proteins_100g'),
+    fvl: g('fruits-vegetables-legumes-estimate-from-ingredients_100g') ?? g('fruits-vegetables-nuts-estimate-from-ingredients_100g')};
+}
+const countOver = (v, t) => t.filter(x => v > x).length;
+function estimateNutriGrade(p){
+  const x = nutr(p);
+  if (x.sugar === null || x.sat === null || x.salt === null) return null;
+  if (isBeverage(p)) return {grade: x.sugar <= 1.5 ? 'b' : x.sugar <= 4 ? 'c' : x.sugar <= 6 ? 'd' : 'e', score:null};
+  const N = Math.min(10, countOver(x.kj ?? 0, [335,670,1005,1340,1675,2010,2345,2680,3015,3350]))
+          + Math.min(15, countOver(x.sugar, [3.4,6.8,10,14,17,20,24,27,31,34,37,41,44,48,51]))
+          + Math.min(10, countOver(x.sat, [1,2,3,4,5,6,7,8,9,10]))
+          + Math.min(20, countOver(x.salt, Array.from({length:20},(_,i)=>+(0.2*(i+1)).toFixed(1))));
+  const fib = countOver(x.fibre ?? 0, [3.0,4.1,5.2,6.3,7.4]);
+  const pro = N >= 11 ? 0 : countOver(x.protein ?? 0, [2.4,4.8,7.2,9.6,12,14,17]);
+  const fvl = x.fvl ?? 0, fv = fvl > 80 ? 5 : fvl > 60 ? 2 : fvl > 40 ? 1 : 0;
+  const sc = N - fib - pro - fv;
+  return {grade: sc <= 0 ? 'a' : sc <= 2 ? 'b' : sc <= 10 ? 'c' : sc <= 18 ? 'd' : 'e', score: sc};
+}
+// What stands out in the nutrition panel, good and bad
+function nutrientNotes(p){
+  const x = nutr(p), drink = isBeverage(p), k = drink ? .5 : 1, per = `per 100${drink ? 'ml' : 'g'}`;
+  const bad = [], good = [];
+  if (x.sugar !== null){
+    if (x.sugar > 22.5*k) bad.push({t:`high in sugar (${fmt(x.sugar)}g ${per})`, short:'high sugar'});
+    else if (x.sugar > 10*k) bad.push({t:`fairly sugary (${fmt(x.sugar)}g ${per})`});
+    else if (x.sugar <= 5*k) good.push(`low in sugar (${fmt(x.sugar)}g)`);
+  }
+  if (x.sat !== null){
+    if (x.sat > 5*k) bad.push({t:`high in saturated fat (${fmt(x.sat)}g)`, short:'high saturated fat'});
+    else if (x.sat <= 1.5*k) good.push('low in saturated fat');
+  }
+  if (x.salt !== null){
+    if (x.salt > 1.5*k) bad.push({t:`high in salt (${fmt(x.salt)}g)`, short:'high salt'});
+    else if (x.salt <= .3*k) good.push('low in salt');
+  }
+  if (!drink && x.kj !== null && x.kj > 1675) bad.push({t:`high in kilojoules (${Math.round(x.kj)}kJ ${per})`});
+  if (!drink && x.fibre !== null){
+    if (x.fibre >= 6) good.push(`high in fibre (${fmt(x.fibre)}g)`);
+    else if (x.fibre >= 3) good.push('a source of fibre');
+  }
+  if (!drink && x.protein !== null && x.protein >= 10) good.push(`high in protein (${fmt(x.protein)}g)`);
+  if (x.fvl !== null && x.fvl >= 40) good.push('made mostly of fruit, veg or legumes');
+  return {bad, good};
+}
+
+/* ---------- Data checks ---------- */
+// Spots nutrition numbers that can't be right. Can't catch a panel where every value is wrong in the same way
+// (e.g. all per-serve values entered as per 100g), which is what the "doesn't match the label" button is for.
+function checkData(p){
+  const x = nutr(p), issues = [];
+  const has = (...v) => v.every(n => n !== null);
+  if (has(x.sugar, x.carbs) && x.sugar > x.carbs + 0.5) issues.push(`Sugar (${fmt(x.sugar)}g) is higher than total carbohydrate (${fmt(x.carbs)}g).`);
+  if (has(x.sat, x.fat) && x.sat > x.fat + 0.2) issues.push(`Saturated fat (${fmt(x.sat)}g) is higher than total fat (${fmt(x.fat)}g).`);
+  const parts = [x.fat, x.carbs, x.protein, x.fibre, x.salt].filter(n => n !== null);
+  const sum = parts.reduce((a,b) => a + b, 0);
+  if (sum > 105) issues.push(`The nutrients add up to ${Math.round(sum)}g per 100g, which isn't possible.`);
+  if ([x.sugar, x.sat, x.fat, x.carbs, x.protein, x.fibre].some(n => n !== null && n < 0)) issues.push('Some nutrient values are negative.');
+  if (has(x.kj, x.fat, x.carbs, x.protein)){
+    const calc = 37*x.fat + 17*x.carbs + 17*x.protein + 8*(x.fibre ?? 0);
+    if (calc > 150){
+      const ratio = x.kj / calc;
+      if (ratio > 0.18 && ratio < 0.32) issues.push('The energy looks like it was entered in Calories instead of kilojoules.');
+      else if (ratio < 0.7 || ratio > 1.4) issues.push(`The energy (${Math.round(x.kj)}kJ) doesn't match the fat, carbs and protein (about ${Math.round(calc)}kJ). Some values may be per serve rather than per 100g.`);
+    }
+  }
+  if (!issues.length && p.source !== 'label' && (p.data_quality_errors_tags || []).some(t => /nutrition|energy|sugar|fat|salt/.test(t)))
+    issues.push('Open Food Facts has flagged errors in this product’s nutrition data.');
+  const year = p.last_modified_t ? new Date(p.last_modified_t * 1000).getFullYear() : null;
+  const stale = year && (new Date().getFullYear() - year) >= 4 ? year : null;
+  return {issues, stale};
+}
+
+/* ---------- Scoring ---------- */
+const SCORE_V = 2;          // bump when the scoring formula changes, so saved history gets recalculated
+const GREEN_FROM = 75;      // ultra-processed foods top out at 74, so they can never be green
+const NOVA_PTS = {1:34, 2:28, 3:18};
+const NOVA_LABEL = {1:'Unprocessed or minimally processed', 2:'Cooking ingredient', 3:'Processed food', 4:'Ultra-processed food'};
+const NUTRI_PTS = {a:33, b:26, c:18, d:9, e:2};               // used when only the grade is known
+const GRADE_BAND = {a:[28,33], b:[24,27], c:[14,23], d:[6,13], e:[0,5]};
+// Nutri-Score points (lower is healthier) mapped smoothly onto 0–33, lining up with the grade boundaries
+const FOOD_CURVE = [[-8,33],[0,28],[2,24],[10,14],[18,6],[30,0]];
+const DRINK_CURVE = [[-2,33],[2,24],[6,16],[9,9],[14,0]];
+function curve(pts, c){
+  if (pts <= c[0][0]) return c[0][1];
+  for (let i = 1; i < c.length; i++){
+    const [x0,y0] = c[i-1], [x1,y1] = c[i];
+    if (pts <= x1) return y0 + (y1 - y0) * (pts - x0) / (x1 - x0);
+  }
+  return c[c.length-1][1];
+}
+const uniqueMarkers = (p, g) => {
+  const mk = p.nova_groups_markers && p.nova_groups_markers[String(g)];
+  return Array.isArray(mk) ? new Set(mk.map(m => m && m[1]).filter(Boolean)).size : 0;
+};
+// Ultra-processed: 8 points with one sign of ultra-processing, down to 2 with seven or more; 5 if unknown
+const novaFourPts = n => n ? Math.max(2, 9 - n) : 5;
+
+function nutritionPart(p){
+  const ok = g => /^[a-e]$/.test(g || '');
+  const ns = p.nutriscore && p.nutriscore['2023'];
+  let grade = null, points = null, drink = isBeverage(p), estimated = false;
+  if (ns && ok(ns.grade)){
+    grade = ns.grade;
+    if (typeof ns.score === 'number') points = ns.score;
+    if (ns.data && typeof ns.data.is_beverage !== 'undefined') drink = !!Number(ns.data.is_beverage);
+  } else if (ok(p.nutriscore_grade)){
+    grade = p.nutriscore_grade;
+    if (typeof p.nutriscore_score === 'number') points = p.nutriscore_score;
+  } else {
+    const e = estimateNutriGrade(p);
+    if (e){ grade = e.grade; points = e.score; estimated = true; }
+  }
+  if (!grade) return {pts:null, max:33, label:'Unknown'};
+  let pts = NUTRI_PTS[grade], where = '';
+  if (points !== null){
+    const [lo, hi] = GRADE_BAND[grade];
+    // Keep within the grade's band, in case the points come from a different Nutri-Score version than the grade
+    pts = Math.round(Math.min(hi, Math.max(lo, curve(points, drink ? DRINK_CURVE : FOOD_CURVE))));
+    const f = (pts - lo) / (hi - lo);
+    where = f >= .67 ? 'better end' : f <= .33 ? 'worse end' : '';
+  }
+  const G = grade.toUpperCase();
+  return {pts, max:33, grade, estimated, where,
+    label:`Nutri-Score ${G}${where ? `, at the ${where} of ${G}` : ''}${estimated ? ' (estimated)' : ''}`};
+}
+
+function scoreProduct(p){
+  const parts = {};
+  const nova = Number(p.nova_group);
+  if (nova === 4){
+    const n = uniqueMarkers(p, 4);
+    parts.processing = {pts:novaFourPts(n), max:34, nova, markers:n, label:`NOVA group 4: ${NOVA_LABEL[4]}`};
+  } else if (NOVA_PTS[nova] !== undefined){
+    parts.processing = {pts:NOVA_PTS[nova], max:34, nova, label:`NOVA group ${nova}: ${NOVA_LABEL[nova]}`};
+  } else {
+    parts.processing = {pts:null, max:34, label:'Unknown'};
+  }
+  parts.nutrition = nutritionPart(p);
+  const hasIngredients = !!(p.ingredients_text || p.ingredients_text_en);
+  const tags = p.additives_tags || [];
+  if (hasIngredients || tags.length){
+    const list = tags.map(classifyAdditive);
+    const lost = list.reduce((s,a) => s + a.pts, 0);
+    parts.additives = {pts:Math.max(0, 33 - lost), max:33, list,
+      label: list.length ? `${list.length} additive${list.length>1?'s':''}` : 'None found'};
+  } else {
+    parts.additives = {pts:null, max:33, list:[], label:'Unknown'};
+  }
+  const known = Object.values(parts).filter(x => x.pts !== null);
+  if (parts.processing.pts === null && parts.nutrition.pts === null) return {total:null, parts};
+  let total = Math.round(known.reduce((s,x)=>s+x.pts,0) / known.reduce((s,x)=>s+x.max,0) * 100);
+  // With partial data the scaling could lift an ultra-processed food into green, so hold it just below
+  if (nova === 4) total = Math.min(total, GREEN_FROM - 1);
+  return {total, parts, partial: known.length < 3};
+}
+
+/* ---------- Explanations ---------- */
+const NOVA_WHY = {
+  1:'A whole or minimally processed food, like fresh, frozen or dried fruit and vegetables, plain milk, eggs, meat or oats. This is the best group.',
+  2:'A cooking ingredient such as oil, butter, sugar, salt or honey. Fine in small amounts when cooking, but not meant to be eaten on its own.',
+  3:'A processed food: a whole food with a few things added, like salt, sugar or oil. Think cheese, canned fish or simple bread.',
+  4:'An ultra-processed food, made mostly from industrial ingredients you wouldn’t use in a home kitchen. These are easy to overeat and linked to poorer health.'};
+function markerNames(p, g){
+  const mk = p.nova_groups_markers && p.nova_groups_markers[String(g)];
+  if (!Array.isArray(mk)) return [];
+  const out = [];
+  for (const it of mk){
+    const [type, tag] = it || [];
+    if (!tag) continue;
+    const c = tag.replace(/^[a-z]{2}:/,'');
+    const name = type === 'additives' ? (additiveName(c) || 'E' + c.slice(1)) : c.replace(/-/g,' ');
+    if (!out.includes(name)) out.push(name);
+    if (out.length >= 6) break;
+  }
+  return out;
+}
+function processingWhy(p, part){
+  if (part.pts === null) return 'There’s no ingredient list for this product in the database, so its processing level can’t be judged. The score uses the other parts only.';
+  const m = markerNames(p, part.nova);
+  if (part.nova === 4){
+    const n = part.markers;
+    const scale = ' Ultra-processed foods score 2 to 8 here: the fewer signs of ultra-processing, the better.';
+    if (!n) return NOVA_WHY[4] + scale;
+    const more = n > m.length ? `, plus ${n - m.length} more` : '';
+    return `${NOVA_WHY[4]}${scale} This one has ${n} sign${n>1?'s':''}: ${joinList(m)}${more}.`;
+  }
+  if (part.nova === 3 && m.length) return `${NOVA_WHY[3]} This one has added ${joinList(m)}.`;
+  return NOVA_WHY[part.nova];
+}
+const GRADE_WHY = {a:'A very healthy nutrient balance.', b:'A good nutrient balance.', c:'An average nutrient balance.', d:'A poor nutrient balance.', e:'A very poor nutrient balance.'};
+const WHERE_WHY = {'better end':' It sits at the better end of its grade.', 'worse end':' It sits at the worse end of its grade.'};
+function nutritionWhy(p, part){
+  if (part.pts === null) return 'The nutrition panel is missing from the database, so nutrition can’t be judged.';
+  const {bad, good} = nutrientNotes(p);
+  let t = GRADE_WHY[part.grade] + (WHERE_WHY[part.where] || '');
+  if (bad.length && good.length) t += ` It’s ${joinList(bad.map(b=>b.t))}, though it’s ${joinList(good)}.`;
+  else if (bad.length) t += ` It’s ${joinList(bad.map(b=>b.t))}.`;
+  else if (good.length) t += ` It’s ${joinList(good)}.`;
+  if (isBeverage(p) && part.grade !== 'a') t += ' For drinks, only water gets an A.';
+  if (part.estimated) t += p.source === 'label' ? ' Worked out from the nutrition panel in your photo.' : ' Worked out from the nutrition panel, as the database had no official grade.';
+  return t;
+}
+function additivesWhy(part){
+  if (part.pts === null) return 'There’s no ingredient list in the database, so additives can’t be checked.';
+  const L = part.list;
+  if (!L.length) return 'No additives found in the ingredients, so full marks.';
+  const f = L.filter(a => a.kind === 'flag'), m = L.filter(a => a.kind === 'minor'), o = L.filter(a => a.kind === 'ok');
+  const bits = [];
+  if (f.length) bits.push(`${f.length} additive${f.length>1?'s':''} with health concerns (${f.length>1?'−8 each':'−8'})`);
+  if (m.length) bits.push(`${m.length} other additive${m.length>1?'s':''} (${m.length>1?'−2 each':'−2'})`);
+  let t = bits.length ? `Lost ${33 - part.pts} points for ${joinList(bits)}.` : 'Full marks.';
+  if (o.length) t += ` ${cap(joinList(o.map(a => a.name || a.code)))} ${o.length>1 ? 'are natural or harmless, so they cost' : 'is natural or harmless, so it costs'} nothing.`;
+  return t;
+}
+function summaryLine(p, s){
+  if (s.total === null) return '';
+  const r = [];
+  if (s.parts.processing.nova === 4) r.push('ultra-processing');
+  nutrientNotes(p).bad.filter(b => b.short).forEach(b => r.push(b.short));
+  const f = (s.parts.additives.list || []).filter(a => a.kind === 'flag').length;
+  if (f) r.push(`${f} additive${f>1?'s':''} of concern`);
+  if (r.length) return `Held back by ${joinList(r)}.`;
+  if (s.parts.processing.nova === 1 && s.parts.additives.pts === 33) return 'A whole food with nothing added.';
+  return s.total >= GREEN_FROM ? 'Nothing major holding it back.' : '';
+}
+
+const band = s => s === null || s === undefined ? 'n' : s >= GREEN_FROM ? 'g' : s >= 40 ? 'a' : 'r';
+const VERDICT = {g:'Everyday food', a:'Sometimes food', r:'Treat food', n:'Not enough data'};
+const COLOR = {g:'var(--green)', a:'var(--amber)', r:'var(--red)', n:'var(--muted)'};
+
+/* ---------- History ---------- */
+function loadHist(){ try { return JSON.parse(localStorage.getItem(HIST_KEY)) || []; } catch { return []; } }
+function saveHist(h){ try { localStorage.setItem(HIST_KEY, JSON.stringify(h.slice(0,100))); } catch {} }
+function addHist(item){ const h = loadHist().filter(x => x.code !== item.code); h.unshift({...item, v:SCORE_V}); saveHist(h); }
+let refreshing = false;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function refreshHistory(){
+  if (refreshing) return;
+  refreshing = true;
+  try {
+    for (const item of loadHist()){
+      if (item.v === SCORE_V) continue;
+      let p = getLabel(item.code);
+      if (!p && !String(item.code).startsWith('label-')){
+        try { p = await fetchProduct(item.code); } catch { break; }  // offline: try again next time
+        await sleep(700);                                            // stay well inside the database's rate limit
+      }
+      const h = loadHist(), it = h.find(x => x.code === item.code);
+      if (!it) continue;
+      if (p) it.score = scoreProduct(p).total;
+      it.v = SCORE_V;
+      saveHist(h);
+      if (!$('#home').classList.contains('hidden')) renderHist();
+    }
+  } finally { refreshing = false; }
+}
+function renderHist(){
+  const h = loadHist();
+  if (h.some(x => x.v !== SCORE_V)) refreshHistory();
+  $('#clearHist').classList.toggle('hidden', !h.length);
+  $('#histList').innerHTML = h.length ? h.map(x => `
+    <li><button class="row" data-code="${esc(x.code)}">
+      ${x.img ? `<img src="${esc(x.img)}" alt="" loading="lazy">` : '<span class="noimg"></span>'}
+      <span class="t"><b>${esc(x.name)}</b><span>${esc(x.brand || '')}${x.brand ? ', ' : ''}${new Date(x.time).toLocaleDateString('en-AU',{day:'numeric',month:'short'})}</span></span>
+      <span class="pill ${band(x.score)}${x.v === SCORE_V ? '' : ' old'}">${x.score ?? '?'}</span>
+    </button></li>`).join('')
+    : '<li class="empty" style="border:2px dashed var(--line)">Nothing scanned yet. Your scans will show up here.</li>';
+}
+
+/* ---------- Views ---------- */
+function show(view){
+  ['home','loading','result','label','paste','review'].forEach(v => $('#'+v).classList.toggle('hidden', v !== view));
+  $('#dock').classList.toggle('hidden', view !== 'result');
+  window.scrollTo(0,0);
+  if (view === 'home') renderHist();
+}
+const nameOf = p => p.product_name_en || p.product_name || p.generic_name || 'Unnamed product';
+const brandOf = p => (p.brands || '').split(',')[0].trim();
+
+async function fetchProduct(code){
+  const r = await fetch(`${API}/api/v2/product/${encodeURIComponent(code)}.json?fields=${FIELDS}`);
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error('bad status ' + r.status);
+  const d = await r.json();
+  return d.status === 1 ? d.product : null;
+}
+
+async function lookup(code){
+  code = String(code).trim();
+  if (!code.startsWith('label-')) code = code.replace(/\D/g,'');
+  if (!code) return;
+  const saved = getLabel(code);
+  if (saved) return showProduct(saved);
+  if (code.startsWith('label-')) return renderNotFound(code);
+  show('loading');
+  let p;
+  try { p = await fetchProduct(code); }
+  catch { return renderError(code, "Couldn't reach the food database. Check your internet connection and try again."); }
+  if (!p) return renderNotFound(code);
+  p.code = p.code || code;
+  showProduct(p);
+}
+
+function showProduct(p){
+  const s = scoreProduct(p);
+  addHist({code:p.code, name:nameOf(p), brand:brandOf(p), img:p.image_front_small_url || '', score:s.total, time:Date.now()});
+  renderResult(p, s);
+  findAlternatives(p, s);
+}
+
+function renderNotFound(code){
+  $('#result').innerHTML = `
+    <button class="back" data-home>‹ Back</button>
+    <h2 style="margin-top:14px">Not found</h2>
+    <p>Barcode ${esc(code)} isn't in the Open Food Facts database yet. Photograph the label and it'll be scored from that, then remembered on this phone.</p>
+    <div class="stack"><button class="btn btn-main" data-paste-code="${esc(code)}">Paste the label details</button>
+    <button class="btn btn-ghost" data-label-code="${esc(code)}">Photograph the label</button></div>
+    <p class="muted small" style="margin-top:14px">You can also <a href="${API}/cgi/product.pl?type=add&code=${encodeURIComponent(code)}" target="_blank" rel="noopener">add it on Open Food Facts</a> so it works for everyone.</p>`;
+  show('result');
+}
+function renderError(code, msg){
+  $('#result').innerHTML = `<button class="back" data-home>‹ Back</button><div class="note bad">${esc(msg)}</div>
+    <button class="btn btn-ghost" style="margin-top:12px" data-retry="${esc(code)}">Try again</button>`;
+  show('result');
+}
+
+function light(label, v, lo, hi){
+  if (v === null) return `<div class="light ln"><b>–</b><span>${label}</span></div>`;
+  const c = v <= lo ? 'lg' : v > hi ? 'lr' : 'la';
+  return `<div class="light ${c}"><b>${fmt(v)}g</b><span>${label}</span></div>`;
+}
+function partHTML(title, part, why){
+  const pct = part.pts === null ? 0 : part.pts / part.max * 100;
+  const b = part.pts === null ? 'n' : pct >= 70 ? 'g' : pct >= 40 ? 'a' : 'r';
+  return `<div class="part">
+    <div class="top"><h3>${title}</h3><b>${part.pts === null ? 'Unknown' : `${part.pts} / ${part.max}`}</b></div>
+    <div class="meter"><i style="width:${pct}%;background:${COLOR[b]}"></i></div>
+    <p class="muted small" style="margin:0">${esc(part.label)}</p>
+    <p class="why">${esc(why)}</p>
+  </div>`;
+}
+
+let currentProduct = null;
+function renderResult(p, s){
+  currentProduct = p;
+  const check = checkData(p);
+  const b = band(s.total);
+  const x = nutr(p), drink = isBeverage(p), k = drink ? .5 : 1;
+  const adds = s.parts.additives.list || [];
+  const flagged = adds.filter(a => a.kind === 'flag');
+  $('#result').innerHTML = `
+    <button class="back" data-home>‹ Back</button>
+    <div class="hero">
+      <div class="sticker pop" style="background:${COLOR[b]}">
+        <div><div class="num">${s.total ?? '?'}</div><div class="of">out of 100</div></div>
+      </div>
+      <div><div class="verdict" style="color:${COLOR[b]}">${VERDICT[b]}</div><p class="summary">${esc(summaryLine(p, s))}</p></div>
+    </div>
+    <div class="prod">
+      ${p.image_front_small_url ? `<img src="${esc(p.image_front_small_url)}" alt="">` : ''}
+      <div><b>${esc(nameOf(p))}</b><span class="muted small">${esc(brandOf(p))}</span>${check.stale ? `<span class="muted small" style="display:block">Database entry last updated in ${check.stale}. Recipes can change.</span>` : ''}</div>
+    </div>
+    ${check.issues.length ? `<div class="note bad"><b>These numbers look unreliable, so this score may be wrong.</b><ul style="margin:6px 0 8px;padding-left:18px">${check.issues.map(i => `<li>${esc(i)}</li>`).join('')}</ul>${p.source === 'label'
+      ? `<button class="linkbtn" data-edit-label>Check the numbers against the label</button>`
+      : `<button class="linkbtn" data-paste-code="${esc(p.code)}" data-from-off>Paste or photograph the label to fix it</button>`}</div>` : ''}
+    ${p.source === 'label' ? `<div class="note info">Scored from label photos. <button class="linkbtn" data-edit-label>Edit details</button></div>` : ''}
+    ${p.source !== 'label' && (s.partial || s.total === null) ? `<div class="note info">The database is missing some details for this product. <button class="linkbtn" data-label-code="${esc(p.code)}" data-from-off>Photograph the label to fill the gaps</button></div>` : ''}
+    ${s.parts.processing.nova === 4 && s.total >= 60 ? `<div class="note info">A better ultra-processed choice, but ultra-processed foods top out at 74, so they're never an everyday food.</div>` : ''}
+    ${s.partial && s.total !== null ? `<div class="note warn">This score is based on partial data.</div>` : ''}
+
+    <h2>Why this score</h2>
+    ${partHTML('Processing', s.parts.processing, processingWhy(p, s.parts.processing))}
+    ${partHTML('Nutrition', s.parts.nutrition, nutritionWhy(p, s.parts.nutrition))}
+    ${partHTML('Additives', s.parts.additives, additivesWhy(s.parts.additives))}
+    ${adds.length ? `<div class="chips">${adds.map(a => `<span class="chip ${a.kind==='flag'?'flag':''}">${esc(a.code)}${a.name ? ` <small>${esc(a.name)}</small>` : ''}</span>`).join('')}</div>` : ''}
+    ${flagged.length ? `<ul class="flaglist">${flagged.map(a => `<li><b>${esc(a.code)}${a.name ? ` (${esc(a.name)})` : ''}</b>: ${esc(a.why)}</li>`).join('')}</ul>` : ''}
+
+    <h2>Per 100${drink ? 'ml' : 'g'}</h2>
+    <div class="lights">
+      ${light('Sugar', x.sugar, 5*k, 22.5*k)}
+      ${light('Sat fat', x.sat, 1.5*k, 5*k)}
+      ${light('Salt', x.salt, .3*k, 1.5*k)}
+      ${light('Fat', x.fat, 3*k, 17.5*k)}
+    </div>
+    ${p.source === 'label'
+      ? `<button class="linkbtn" data-edit-label>Doesn't match the label? Edit the details</button>`
+      : `<button class="linkbtn" data-paste-code="${esc(p.code)}" data-from-off>Doesn't match the label? Paste or photograph it to correct the score</button>`}
+
+    <div class="alt" id="altBox">
+      <h2>Healthier options</h2>
+      <p class="muted small" id="altStatus">Looking for better choices sold in Australia…</p>
+      <ul class="hist" id="altList"></ul>
+    </div>`;
+  show('result');
+}
+
+/* ---------- Alternatives ---------- */
+// Categories too broad to give sensible swaps (e.g. "cereals and potatoes" would suggest flour for a breakfast cereal)
+const GENERIC_CATS = new Set(['en:plant-based-foods-and-beverages','en:plant-based-foods','en:foods','en:groceries',
+  'en:cereals-and-potatoes','en:cereals-and-their-products','en:fruits-and-vegetables-based-foods','en:meals',
+  'en:fermented-foods','en:food-additives','en:dietary-supplements','en:farming-products','en:dried-products',
+  'en:frozen-foods','en:canned-foods','en:breakfasts','en:beverages-and-beverages-preparations','en:condiments',
+  'en:animal-products','en:non-food-products','en:open-beauty-facts']);
+const catName = c => c.replace(/^[a-z]{2}:/,'').replace(/-/g,' ');
+const searchCache = new Map();
+let altToken = 0, lastAlt = null;
+
+async function searchCategory(cat, healthyOnly){
+  const key = cat + '|' + healthyOnly;
+  if (searchCache.has(key)) return searchCache.get(key);
+  const q = new URLSearchParams({categories_tags:cat, countries_tags_en:'australia', fields:SEARCH_FIELDS, page_size:'100', sort_by:'unique_scans_n'});
+  // Healthy pass: exclude Nutri-Score C, D, E and ungraded products server-side, so healthy but less-popular items make the list
+  if (healthyOnly) q.set('nutrition_grades_tags', '-c,-d,-e,-unknown,-not-applicable');
+  const r = await fetch(`${API}/api/v2/search?${q}`);
+  if (r.status === 429 || r.status === 503) { const e = new Error('busy'); e.busy = true; throw e; }
+  if (!r.ok) throw new Error('status ' + r.status);
+  const d = await r.json();
+  const prods = d.products || [];
+  searchCache.set(key, prods);
+  return prods;
+}
+
+function betterBecause(a, cur){
+  const r = [];
+  const cmp = (k, label) => { const x = a.parts[k].pts, y = cur.parts[k].pts; if (x !== null && y !== null && x > y) r.push(label); };
+  cmp('processing', 'less processed');
+  cmp('nutrition', 'better nutrition');
+  cmp('additives', 'fewer additives');
+  return cap(joinList(r));
+}
+
+async function findAlternatives(p, cur){
+  const token = ++altToken;
+  lastAlt = {p, cur};
+  const status = $('#altStatus'), list = $('#altList');
+  const myScore = cur.total ?? -1;
+  const hier = (p.categories_hierarchy && p.categories_hierarchy.length ? p.categories_hierarchy : p.categories_tags) || [];
+  const cats = hier.filter(c => c.startsWith('en:') && !GENERIC_CATS.has(c)).reverse().slice(0, 4);
+  if (!cats.length){ status.textContent = 'This product has no category in the database, so there’s nothing to compare it with.'; return; }
+
+  const seen = new Set([p.code]);
+  const found = [];
+  let errors = 0, busy = false, searched = 0;
+  for (let i = 0; i < cats.length && found.length < 6; i++){
+    const passes = i === 0 ? [true, false] : [true]; // healthy pass everywhere, plus a popular pass in the closest category
+    for (const healthy of passes){
+      try {
+        const prods = await searchCategory(cats[i], healthy);
+        searched++;
+        prods.forEach((x, idx) => {
+          if (!x.code || seen.has(x.code)) return;
+          seen.add(x.code);
+          const s = scoreProduct(x);
+          if (s.total === null || s.parts.processing.pts === null || s.parts.nutrition.pts === null) return;
+          if (s.total > myScore) found.push({x, s, cat:cats[i], depth:i, idx});
+        });
+      } catch (e) { errors++; if (e.busy) busy = true; }
+      if (token !== altToken) return; // a newer scan has started
+    }
+  }
+  // Closest category first, then highest score, then most popular
+  found.sort((a,b) => (a.depth - b.depth) || (b.s.total - a.s.total) || (a.idx - b.idx));
+  const top = found.slice(0, 6).sort((a,b) => b.s.total - a.s.total);
+
+  if (!top.length){
+    if (!searched){
+      status.innerHTML = `${busy ? 'The food database is busy right now.' : 'Couldn’t load alternatives.'} <button class="linkbtn" id="altRetry">Try again</button>`;
+    } else if (cur.total >= GREEN_FROM){
+      status.textContent = `This is already one of the best choices among ${catName(cats[0])}.`;
+    } else {
+      status.textContent = `No higher-scoring ${catName(cats[0])} sold in Australia are in the database yet.`;
+    }
+    return;
+  }
+  const cats_used = [...new Set(top.map(t => catName(t.cat)))];
+  status.textContent = `Higher-scoring ${joinList(cats_used)} sold in Australia:`;
+  list.innerHTML = top.map(({x, s}) => `
+    <li><button class="row" data-code="${esc(x.code)}">
+      ${x.image_front_small_url ? `<img src="${esc(x.image_front_small_url)}" alt="" loading="lazy">` : '<span class="noimg"></span>'}
+      <span class="t"><b>${esc(nameOf(x))}</b><span>${esc(brandOf(x))}</span><span class="why-alt">${esc(betterBecause(s, cur))}</span></span>
+      <span class="pill ${band(s.total)}">${s.total}</span>
+    </button></li>`).join('');
+  if (errors) list.insertAdjacentHTML('afterend', '<p class="muted small">Some categories couldn’t be searched, so there may be more options.</p>');
+}
+
+
+/* ---------- Label photos ---------- */
+const SET_KEY = 'pantrycheck.settings.v1', LABEL_KEY = 'pantrycheck.labels.v1';
+const getSettings = () => { try { return JSON.parse(localStorage.getItem(SET_KEY)) || {}; } catch { return {}; } };
+const labelsAll = () => { try { return JSON.parse(localStorage.getItem(LABEL_KEY)) || {}; } catch { return {}; } };
+const getLabel = c => labelsAll()[c] || null;
+function putLabel(p){ const a = labelsAll(); a[p.code] = p; try { localStorage.setItem(LABEL_KEY, JSON.stringify(a)); } catch {} }
+const labelReady = () => { const s = getSettings(); return !!(s.url && s.token); };
+
+let labelCtx = {code:null, shots:[null,null,null], base:null};
+
+function startLabel(code, base){
+  labelCtx = {code: code || ('label-' + Date.now()), shots:[null,null,null], base: base || null};
+  $('#label').innerHTML = `
+    <button class="back" data-home>‹ Back</button>
+    <h2 style="margin-top:14px">Photograph the label</h2>
+    ${labelReady() ? '' : `<div class="note warn">Label reading isn’t set up on this phone yet. Go back, open “Label reading setup” and enter your Worker address and app token.</div>`}
+    <p>Take a clear, flat photo of the nutrition panel and one of the ingredients. Add the front of the pack if you'd like the name filled in.</p>
+    <button class="linkbtn" data-paste-code="${esc(labelCtx.code)}">Shopping online? Paste the label text instead (free, no setup)</button>
+    <div class="shots">${['Nutrition panel','Ingredients','Front of pack (optional)'].map((t,i) =>
+      `<label class="shot" id="shot${i}"><input type="file" accept="image/*" data-slot="${i}"><span>${t}</span></label>`).join('')}</div>
+    <p class="muted small">If the panel and ingredients fit in one photo, one is enough.</p>
+    <button class="btn btn-main" id="readLabel" disabled>Read label</button>
+    <div id="labelErr" class="note bad hidden"></div>`;
+  show('label');
+}
+
+// Shrink photos before sending: faster upload, lower cost, still sharp enough to read
+async function prepImage(file){
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.naturalWidth * scale);
+    c.height = Math.round(img.naturalHeight * scale);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return {media_type:'image/jpeg', data: c.toDataURL('image/jpeg', .85).split(',')[1]};
+  } finally { URL.revokeObjectURL(url); }
+}
+
+function labelError(msg){
+  const e = $('#labelErr');
+  if (!e) return;
+  e.textContent = msg;
+  e.classList.toggle('hidden', !msg);
+}
+
+async function readLabel(){
+  const st = getSettings();
+  const images = labelCtx.shots.filter(Boolean);
+  const btn = $('#readLabel');
+  btn.disabled = true; btn.textContent = 'Reading the label…';
+  labelError('');
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 90000);
+  try {
+    const r = await fetch(st.url, {method:'POST', signal:ctrl.signal,
+      headers:{'Content-Type':'application/json', 'X-App-Token':st.token}, body:JSON.stringify({images})});
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.label) throw new Error(d.error || `The label reader returned an error (${r.status}).`);
+    renderReview(d.label, labelCtx.code, labelCtx.base);
+  } catch (e) {
+    labelError(e.name === 'AbortError' ? 'Reading the label took too long. Try again, ideally with clearer photos.'
+      : e.message === 'Failed to fetch' || e.name === 'TypeError' ? 'Couldn’t reach the label reader. Check the Worker address in setup and your internet connection.'
+      : e.message);
+    btn.disabled = false; btn.textContent = 'Read label';
+  } finally { clearTimeout(timer); }
+}
+
+let reviewCtx = null;
+function renderReview(L, code, base){
+  reviewCtx = {code, base, category: L.category || null};
+  const n = L.per_100 || {};
+  const v = x => (x === null || x === undefined ? '' : x);
+  const name = L.product_name || (base && nameOf(base) !== 'Unnamed product' ? nameOf(base) : '');
+  const brand = L.brand || (base ? brandOf(base) : '');
+  const f = (id, label, val, attrs = 'inputmode="decimal"') => `<div class="field"><label for="${id}">${label}</label><input id="${id}" ${attrs} value="${esc(v(val))}"></div>`;
+  const nova = L.nova_group;
+  $('#review').innerHTML = `
+    <button class="back" data-home>‹ Cancel</button>
+    <h2 style="margin-top:14px">Check what was read</h2>
+    <p class="muted">Fix anything that doesn't match the label, then score it. Leave a box empty if it's not on the label.</p>
+    ${L.notes ? `<div class="note warn">${esc(L.notes)}</div>` : ''}
+    ${f('rName','Product name',name,'')}
+    ${f('rBrand','Brand',brand,'')}
+    <label class="check"><input type="checkbox" id="rDrink" ${L.is_beverage ? 'checked' : ''}> It's a drink (values per 100mL)</label>
+    <h3 style="margin:6px 0 10px">Per 100g or 100mL</h3>
+    <div class="grid2">
+      ${f('rKj','Energy (kJ)',n.energy_kj)}
+      ${f('rCarb','Carbohydrate (g)',n.carbohydrate_g)}
+      ${f('rSugar','Sugars (g)',n.sugars_g)}
+      ${f('rSat','Saturated fat (g)',n.fat_saturated_g)}
+      ${f('rSodium','Sodium (mg)',n.sodium_mg)}
+      ${f('rFibre','Dietary fibre (g)',n.fibre_g)}
+      ${f('rProt','Protein (g)',n.protein_g)}
+      ${f('rFat','Total fat (g)',n.fat_total_g)}
+      ${f('rFvl','Fruit, veg, legumes (%)',L.fruit_veg_legume_percent)}
+    </div>
+    <div class="field"><label for="rIng">Ingredients</label><textarea id="rIng" rows="5">${esc(v(L.ingredients_text))}</textarea></div>
+    ${f('rAdd','Additive numbers, separated by commas',(L.additive_codes || []).join(', '),'autocapitalize="off"')}
+    <div class="field"><label for="rNova">Processing</label><select id="rNova">
+      <option value="" ${!nova ? 'selected' : ''}>Can't tell (no ingredients)</option>
+      ${[1,2,3,4].map(g => `<option value="${g}" ${nova === g ? 'selected' : ''}>Group ${g}: ${NOVA_LABEL[g]}</option>`).join('')}
+    </select></div>
+    ${f('rMarkers','Signs of ultra-processing, separated by commas',(L.ultra_processed_markers || []).join(', '),'')}
+    <div class="field"><label for="rCat">Food type (used to suggest healthier options)</label>
+      <input id="rCat" list="catList" autocapitalize="off" value="${esc((reviewCtx.category || '').replace(/^[a-z]{2}:/,'').replace(/-/g,' '))}" placeholder="e.g. breakfast cereals">
+      <datalist id="catList">${['breakfast cereals','muesli bars','sweet biscuits','crackers','chips and fries','yogurts','cheeses','milks','fruit juices','sodas','breads','pastas','sauces','chocolates','ice creams','frozen meals','canned soups','nuts','dried fruits','baby foods'].map(c => `<option value="${c}">`).join('')}</datalist></div>
+    <div class="stack"><button class="btn btn-main" id="scoreLabel">Score it</button></div>`;
+  show('review');
+}
+
+function scoreFromReview(){
+  const val = id => $('#' + id).value.trim();
+  const num = id => { const x = val(id).replace(',', '.'); return x === '' || isNaN(+x) ? null : +x; };
+  const drink = $('#rDrink').checked;
+  const nova = val('rNova') ? +val('rNova') : null;
+  const codes = val('rAdd').split(/[,\s]+/).map(s => s.toLowerCase().replace(/^e/, '')).filter(s => /^\d{3,4}[a-z]*$/.test(s));
+  const markers = val('rMarkers').split(',').map(s => s.trim()).filter(Boolean);
+  const sodium = num('rSodium');
+  const {code, base, category} = reviewCtx;
+  const typed = val('rCat');
+  const cat = typed ? 'en:' + typed.toLowerCase().replace(/^en:/,'').trim().replace(/\s+/g,'-')
+    : category || (base && base.categories_hierarchy && base.categories_hierarchy.slice(-1)[0]) || null;
+  const label = {product_name: val('rName') || null, brand: val('rBrand') || null, is_beverage: drink,
+    per_100: {energy_kj:num('rKj'), carbohydrate_g:num('rCarb'), sugars_g:num('rSugar'), fat_saturated_g:num('rSat'), sodium_mg:sodium,
+      fibre_g:num('rFibre'), protein_g:num('rProt'), fat_total_g:num('rFat')},
+    fruit_veg_legume_percent: num('rFvl'), ingredients_text: val('rIng') || null, additive_codes: codes,
+    nova_group: nova, ultra_processed_markers: markers, category: cat, notes: ''};
+  const p = {
+    code, source:'label', label,
+    product_name: label.product_name || 'Unnamed product', brands: label.brand || '',
+    image_front_small_url: base ? base.image_front_small_url || '' : '',
+    nova_group: nova,
+    nova_groups_markers: nova === 4 && markers.length ? {'4': markers.map(m => ['ingredients', 'en:' + m.toLowerCase().replace(/\s+/g,'-')])} : {},
+    nutriments: {'energy-kj_100g':label.per_100.energy_kj, carbohydrates_100g:label.per_100.carbohydrate_g, sugars_100g:label.per_100.sugars_g,
+      'saturated-fat_100g':label.per_100.fat_saturated_g, salt_100g: sodium === null ? null : +(sodium * 2.5 / 1000).toFixed(3),
+      fat_100g:label.per_100.fat_total_g, fiber_100g:label.per_100.fibre_g, proteins_100g:label.per_100.protein_g,
+      'fruits-vegetables-legumes-estimate-from-ingredients_100g':label.fruit_veg_legume_percent},
+    additives_tags: codes.map(c => 'en:e' + c),
+    ingredients_text: label.ingredients_text || '',
+    categories_tags: [...(cat ? [cat] : []), ...(drink ? ['en:beverages'] : [])],
+    categories_hierarchy: [...(drink ? ['en:beverages'] : []), ...(cat ? [cat] : [])]
+  };
+  putLabel(p);
+  showProduct(p);
+}
+
+/* ---------- Paste label text ---------- */
+const UP_MARKERS = [
+  ['glucose syrup','glucose syrup'],['fructose syrup','fructose syrup'],['high fructose','high fructose syrup'],
+  ['corn syrup','corn syrup'],['maltodextrin','maltodextrin'],['dextrose','dextrose'],['invert sugar','invert sugar'],
+  ['hydrogenated','hydrogenated oil'],['hydrolysed','hydrolysed protein'],['hydrolyzed','hydrolysed protein'],
+  ['protein isolate','protein isolate'],['modified starch','modified starch'],['flavour enhancer','flavour enhancer'],
+  ['flavor enhancer','flavour enhancer'],['flavouring','flavouring'],['flavour','flavour'],['flavor','flavour'],
+  ['emulsifier','emulsifier'],['thickener','thickener'],['humectant','humectant'],['sweetener','sweetener'],
+  ['colour','colour'],['color','colour'],['anti-caking','anti-caking agent'],['anticaking','anti-caking agent'],
+  ['vegetable gum','vegetable gum'],['stabilis','stabiliser'],['stabiliz','stabiliser'],['yeast extract','yeast extract']
+];
+// Pull every number on a line, with its unit, ignoring percentages
+function numbersIn(line){
+  const out = [];
+  const re = /(\d[\d,]*(?:\.\d+)?)\s*(kj|kcal|cal|mg|ml|g)?\s*(%)?/gi;
+  let m;
+  while ((m = re.exec(line))){
+    if (m[3]) continue;
+    out.push({v: +m[1].replace(/,/g,''), unit: (m[2] || '').toLowerCase()});
+  }
+  return out;
+}
+function parseLabelText(text){
+  const warn = [];
+  const clean = text.replace(/\u00a0/g,' ').replace(/[\u2013\u2014]/g,'-');
+  const lower = clean.toLowerCase();
+  const lines = clean.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  const i100 = lower.search(/per\s*100\s*(g|ml)|\/\s*100\s*(g|ml)/);
+  const iServe = lower.search(/per\s*serv(e|ing)/);
+  const col = (i100 >= 0 && iServe >= 0 && iServe < i100) ? 1 : 0;
+  if (i100 < 0) warn.push('Couldn’t find a “per 100g” heading, so the first column of numbers was used — check the values.');
+  const isDrink = /per\s*100\s*ml|100ml|per\s*100\s*mL/i.test(clean);
+
+  const row = (match, units) => {
+    for (let i = 0; i < lines.length; i++){
+      if (!match(lines[i])) continue;
+      let nums = numbersIn(lines[i]).filter(n => !n.unit || units.includes(n.unit));
+      // Values sometimes sit on the lines below the label
+      for (let j = i + 1; j < Math.min(i + 4, lines.length) && nums.length < col + 1; j++){
+        if (/[a-z]{4,}/i.test(lines[j].replace(/kj|kcal|cal|mg|ml|g/gi,''))) break;
+        nums = nums.concat(numbersIn(lines[j]).filter(n => !n.unit || units.includes(n.unit)));
+      }
+      if (!nums.length) continue;
+      if (nums.length === 1 && col === 1) warn.push('Only one column of numbers was found — check they are the per 100g values.');
+      return nums[Math.min(col, nums.length - 1)];
+    }
+    return null;
+  };
+  const g = r => { const n = r; return n ? n.v : null; };
+  const noSat = l => !/saturat/i.test(l);
+  const energyRow = row(l => /energy/i.test(l), ['kj','kcal','cal']);
+  let energy = null;
+  if (energyRow) energy = energyRow.unit === 'cal' || energyRow.unit === 'kcal' ? Math.round(energyRow.v * 4.184) : energyRow.v;
+  const sodiumRow = row(l => /sodium/i.test(l), ['mg','g']);
+  let sodium = sodiumRow ? (sodiumRow.unit === 'g' ? sodiumRow.v * 1000 : sodiumRow.v) : null;
+  if (sodium === null){
+    const saltRow = row(l => /^[-*\s]*salt\b/i.test(l), ['g','mg']);
+    if (saltRow) sodium = Math.round((saltRow.unit === 'mg' ? saltRow.v / 1000 : saltRow.v) * 400);
+  }
+  const per_100 = {
+    energy_kj: energy,
+    protein_g: g(row(l => /protein/i.test(l), ['g'])),
+    fat_total_g: g(row(l => /fat/i.test(l) && noSat(l), ['g'])),
+    fat_saturated_g: g(row(l => /saturat/i.test(l), ['g'])),
+    carbohydrate_g: g(row(l => /carbohydrate/i.test(l) && !/sugar/i.test(l), ['g'])),
+    sugars_g: g(row(l => /sugar/i.test(l), ['g'])),
+    fibre_g: g(row(l => /fib(re|er)/i.test(l), ['g'])),
+    sodium_mg: sodium === null ? null : Math.round(sodium)
+  };
+
+  // Ingredients: everything after "Ingredients" up to the next section heading
+  let ing = null;
+  const im = clean.match(/ingredients?\s*(?:list)?\s*[:\-]\s*([\s\S]+?)(?=\n\s*(?:allergens?|contains|may contain|storage|nutrition|dietary|country of origin|manufactured|packed|serving|energy|per\s*100)\b|$)/i);
+  if (im) ing = im[1].replace(/\s+/g,' ').trim();
+  else warn.push('No ingredient list was found in the text, so additives and processing couldn’t be worked out.');
+
+  const codes = [];
+  if (ing){
+    const re = /\b(?:ins\s*)?(\d{3,4}[a-z]{0,2})\b(?!\s*%)/gi;
+    let m;
+    while ((m = re.exec(ing))){ const c = m[1].toLowerCase(); if (!codes.includes(c)) codes.push(c); }
+  }
+  const markers = [];
+  if (ing) UP_MARKERS.forEach(([needle, name]) => { if (ing.toLowerCase().includes(needle) && !markers.includes(name)) markers.push(name); });
+
+  let nova = null;
+  if (ing){
+    const items = ing.split(/,(?![^(]*\))/).length;
+    nova = (markers.length || codes.length) ? 4 : items <= 1 ? 1 : 3;
+    warn.push('Processing was worked out from the ingredient list — check it looks right.');
+  }
+  return {product_name:null, brand:null, is_beverage:isDrink, per_100, fruit_veg_legume_percent:null,
+    ingredients_text:ing, additive_codes:codes, nova_group:nova, ultra_processed_markers:markers,
+    category:null, notes:[...new Set(warn)].join(' ')};
+}
+
+function startPaste(code, base){
+  labelCtx = {code: code || ('label-' + Date.now()), shots:[null,null,null], base: base || null};
+  $('#paste').innerHTML = `
+    <button class="back" data-home>‹ Back</button>
+    <h2 style="margin-top:14px">Paste the label details</h2>
+    <p>On the product page, copy the nutrition information and the ingredients, then paste both here. Pasting the whole section is fine.</p>
+    <div class="field"><textarea id="pasteText" rows="12" placeholder="Nutrition Information&#10;Avg Quantity per Serving   Avg Quantity per 100g&#10;Energy   483kJ   1610kJ&#10;…&#10;&#10;Ingredients: …"></textarea></div>
+    <button class="btn btn-main" id="readPaste">Read the text</button>
+    <div id="pasteErr" class="note bad hidden"></div>
+    <div class="stack"><button class="linkbtn" data-photo-code="${esc(labelCtx.code)}">Or photograph the label instead</button></div>`;
+  show('paste');
+}
+function readPaste(){
+  const text = $('#pasteText').value.trim();
+  const err = $('#pasteErr');
+  if (text.length < 20){ err.textContent = 'Paste the nutrition information and ingredients first.'; err.classList.remove('hidden'); return; }
+  const L = parseLabelText(text);
+  const filled = Object.values(L.per_100).filter(v => v !== null).length;
+  if (!filled && !L.ingredients_text){
+    err.textContent = 'Couldn’t find any nutrition values or ingredients in that text. Try copying the nutrition table and the ingredients line again.';
+    err.classList.remove('hidden');
+    return;
+  }
+  err.classList.add('hidden');
+  renderReview(L, labelCtx.code, labelCtx.base);
+}
+
+/* ---------- Scanner ---------- */
+let scanner = null, scanning = false, starting = false;
+async function startScan(){
+  if (scanning || starting) return;
+  starting = true;
+  $('#camError').classList.add('hidden');
+  if (typeof Html5Qrcode === 'undefined'){ starting = false; return camError('The scanner failed to load. Check your internet connection, or type the barcode instead.'); }
+  await stopScan(true);
+  $('#scanner').classList.remove('hidden');
+  $('#reader').innerHTML = '';
+  // Let the overlay lay out before starting, so the camera view is measured at the right size
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  const F = Html5QrcodeSupportedFormats;
+  scanner = new Html5Qrcode('reader', {
+    formatsToSupport:[F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E],
+    experimentalFeatures:{useBarCodeDetectorIfSupported:true}, verbose:false});
+  try {
+    await scanner.start({facingMode:'environment'},
+      {fps:12, qrbox:(w,h) => ({width:Math.floor(w*.8), height:Math.floor(Math.min(w,h)*.35)})},
+      async text => {
+        if (!scanning) return;
+        scanning = false;
+        navigator.vibrate && navigator.vibrate(60);
+        await stopScan();
+        lookup(text);
+      }, () => {});
+    scanning = true;
+  } catch (e) {
+    await stopScan(true);
+    camError('Camera access was blocked or unavailable. Allow camera access for this site in your browser settings, or type the barcode below the button.');
+  } finally { starting = false; }
+}
+async function stopScan(keepQuiet){
+  scanning = false;
+  try {
+    if (scanner){
+      if (scanner.isScanning) await scanner.stop();
+      await scanner.clear();
+    }
+  } catch {}
+  scanner = null;
+  $('#reader').innerHTML = '';
+  if (!keepQuiet) $('#scanner').classList.add('hidden');
+}
+function camError(msg){ const e = $('#camError'); e.textContent = msg; e.classList.remove('hidden'); }
+
+/* ---------- Events ---------- */
+$('#scanBtn').onclick = startScan;
+$('#scanAgain').onclick = () => { show('home'); startScan(); };
+$('#cancelScan').onclick = () => stopScan();
+$('#manualBtn').onclick = () => { const v = $('#manualCode').value; $('#manualCode').value = ''; lookup(v); };
+$('#manualCode').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); $('#manualBtn').click(); } });
+$('#clearHist').onclick = () => { if (confirm('Clear all recent scans?')){ saveHist([]); renderHist(); } };
+$('#noBarcode').onclick = () => startPaste(null);
+$('#setUrl').value = getSettings().url || '';
+$('#setToken').value = getSettings().token || '';
+$('#saveSetup').onclick = () => {
+  const url = $('#setUrl').value.trim(), token = $('#setToken').value.trim();
+  if (url && !/^https:\/\//.test(url)) { $('#setupStatus').textContent = 'The Worker address must start with https://'; return; }
+  try { localStorage.setItem(SET_KEY, JSON.stringify({url, token})); $('#setupStatus').textContent = url && token ? 'Saved. Label reading is ready on this phone.' : 'Saved, but both boxes are needed for label reading.'; }
+  catch { $('#setupStatus').textContent = 'Couldn’t save on this browser.'; }
+};
+document.addEventListener('change', async e => {
+  const inp = e.target.closest('input[data-slot]');
+  if (!inp || !inp.files || !inp.files[0]) return;
+  const i = +inp.dataset.slot, box = $('#shot' + i);
+  try {
+    const img = await prepImage(inp.files[0]);
+    labelCtx.shots[i] = img;
+    box.classList.add('has');
+    box.querySelector('img') && box.querySelector('img').remove();
+    box.insertAdjacentHTML('beforeend', `<img src="data:image/jpeg;base64,${img.data}" alt="Photo added">`);
+    labelError('');
+  } catch { labelError('Couldn’t open that photo. Try taking it again.'); }
+  $('#readLabel').disabled = !labelCtx.shots.some(Boolean) || !labelReady();
+});
+document.addEventListener('click', e => {
+  if (e.target.closest('#readLabel')) return readLabel();
+  if (e.target.closest('#readPaste')) return readPaste();
+  const pc = e.target.closest('[data-paste-code]');
+  if (pc) return startPaste(pc.dataset.pasteCode, pc.hasAttribute('data-from-off') ? currentProduct : null);
+  const ph = e.target.closest('[data-photo-code]');
+  if (ph) return startLabel(ph.dataset.photoCode, labelCtx.base);
+  if (e.target.closest('#scoreLabel')) return scoreFromReview();
+  if (e.target.closest('[data-edit-label]') && currentProduct && currentProduct.label) return renderReview(currentProduct.label, currentProduct.code, null);
+  const lc = e.target.closest('[data-label-code]');
+  if (lc) return startLabel(lc.dataset.labelCode, lc.hasAttribute('data-from-off') ? currentProduct : null);
+  if (e.target.closest('#altRetry') && lastAlt){ $('#altStatus').textContent = 'Looking again…'; return findAlternatives(lastAlt.p, lastAlt.cur); }
+  const row = e.target.closest('[data-code]');
+  if (row) return lookup(row.dataset.code);
+  if (e.target.closest('[data-home]')) return show('home');
+  const retry = e.target.closest('[data-retry]');
+  if (retry) return lookup(retry.dataset.retry);
+});
+renderHist();
+
+/* ---------- Installable app ---------- */
+const APP_VERSION = '2026.10.09';
+$('#appVersion').textContent = `App version ${APP_VERSION}`;
+const INSTALL_KEY = 'pantrycheck.installDismissed';
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+let installPrompt = null;
+
+function installDismissed(){
+  try { return Date.now() - Number(localStorage.getItem(INSTALL_KEY) || 0) < 30 * 864e5; } catch { return false; }
+}
+function updateInstallBox(){
+  const box = $('#installBox');
+  if (isStandalone() || installDismissed()) return box.classList.add('hidden');
+  if (installPrompt){
+    $('#installText').textContent = 'Add it to your home screen. It opens like an app and works offline for foods you’ve already checked.';
+    $('#installBtn').classList.remove('hidden');
+  } else if (isIOS){
+    $('#installText').textContent = 'Tap the Share button, then “Add to Home Screen”. Your scans are saved inside the installed app, so keep the icon: removing it from the home screen deletes them.';
+    $('#installBtn').classList.add('hidden');
+  } else {
+    return box.classList.add('hidden');
+  }
+  box.classList.remove('hidden');
+}
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; updateInstallBox(); });
+window.addEventListener('appinstalled', () => { installPrompt = null; $('#installBox').classList.add('hidden'); });
+$('#installBtn').onclick = async () => {
+  if (!installPrompt) return;
+  installPrompt.prompt();
+  try { await installPrompt.userChoice; } catch {}
+  installPrompt = null;
+  updateInstallBox();
+};
+$('#installLater').onclick = () => {
+  try { localStorage.setItem(INSTALL_KEY, String(Date.now())); } catch {}
+  $('#installBox').classList.add('hidden');
+};
+updateInstallBox();
+
+// Ask the browser not to clear saved data when the phone runs low on space (installed apps only)
+if (isStandalone() && navigator.storage && navigator.storage.persist)
+  navigator.storage.persisted().then(p => p || navigator.storage.persist()).catch(() => {});
+
+function updateOnline(){ $('#offlineNote').classList.toggle('hidden', navigator.onLine !== false); }
+window.addEventListener('online', updateOnline);
+window.addEventListener('offline', updateOnline);
+updateOnline();
+
+/* ---------- Updates ---------- */
+let reloading = false;
+function showUpdate(){ $('#updateToast').classList.remove('hidden'); }
+$('#updateBtn').onclick = async () => {
+  $('#updateBtn').disabled = true;
+  const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
+  if (reg && reg.waiting){ reloading = true; reg.waiting.postMessage({type:'SKIP_WAITING'}); }
+  else location.reload();
+};
+if ('serviceWorker' in navigator && window.isSecureContext){
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (reloading) location.reload(); });
+  navigator.serviceWorker.addEventListener('message', e => { if (e.data && e.data.type === 'PAGE_UPDATED') showUpdate(); });
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    const watch = w => w && w.addEventListener('statechange', () => {
+      if (w.state === 'installed' && navigator.serviceWorker.controller) showUpdate();
+    });
+    if (reg.waiting && navigator.serviceWorker.controller) showUpdate();
+    watch(reg.installing);
+    reg.addEventListener('updatefound', () => watch(reg.installing));
+    // Check for a new version whenever the app comes back to the screen
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
+  }).catch(() => {});
+  navigator.serviceWorker.ready.then(r => r.active && r.active.postMessage({type:'IS_PAGE_UPDATED'})).catch(() => {});
+}
+
+// Home-screen shortcut: open straight into the scanner
+if (new URLSearchParams(location.search).get('scan') === '1'){
+  history.replaceState(null, '', location.pathname);
+  startScan();
+}
+</script>
+</body>
+</html>
