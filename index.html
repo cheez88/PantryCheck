@@ -68,6 +68,7 @@ p{margin:0 0 10px}
 .row .t b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .row .t span{font-size:.85rem;color:var(--muted)}
 .pill{flex:none;min-width:44px;text-align:center;font-family:var(--display);font-weight:800;padding:4px 8px;border-radius:999px;color:#fff}
+.pill.old{opacity:.45}
 .g{background:var(--green)} .a{background:var(--amber)} .r{background:var(--red)} .n{background:var(--muted)}
 .empty{padding:18px;border:2px dashed var(--line);border-radius:14px;color:var(--muted)}
 details{margin-top:28px;border-top:1px solid var(--line);padding-top:14px}
@@ -179,10 +180,10 @@ details p{margin-top:10px;font-size:.95rem}
     <details>
       <summary>How the score works</summary>
       <p>Every food gets up to 100 points from three equal parts:</p>
-      <p><b>Processing (34 points)</b> uses the NOVA system. Fresh and whole foods score highest, ultra-processed foods lowest.</p>
-      <p><b>Nutrition (33 points)</b> uses the 2024 Nutri-Score, which penalises sugar, saturated fat and salt, and rewards fibre, protein and fruit and vegetables.</p>
+      <p><b>Processing (34 points)</b> uses the NOVA system. Fresh and whole foods score highest. Ultra-processed foods score 2 to 8, depending on how many ultra-processed ingredients they contain.</p>
+      <p><b>Nutrition (33 points)</b> uses the 2024 Nutri-Score, which penalises sugar, saturated fat and salt, and rewards fibre, protein and fruit and vegetables. It uses the points behind the grade, so two products with the same grade can still score differently.</p>
       <p><b>Additives (33 points)</b> loses 2 points for most additives and 8 points for additives with health concerns, like certain artificial colours, preservatives and sweeteners. Natural ones like citric acid and pectin cost nothing.</p>
-      <p>Ultra-processed foods are capped at 60, so they can never show green. 70 and above is an everyday food, 40 to 69 is a sometimes food, and below 40 is a treat.</p>
+      <p>75 and above is an everyday food, 40 to 74 is a sometimes food, and below 40 is a treat. Ultra-processed foods can score at most 74, so they can never show green.</p>
       <p>If a barcode isn't in the database, you can paste the label details from a shopping website, or photograph the label. Claude reads the nutrition panel and ingredients, you check the numbers, and the result is saved on your phone for next time.</p>
       <p class="muted">Product data comes from Open Food Facts, a free community database. Scores are a guide for making better choices, not medical advice.</p>
     </details>
@@ -216,10 +217,10 @@ details p{margin-top:10px;font-size:.95rem}
 <script>
 const API = 'https://world.openfoodfacts.org';
 const FIELDS = ['code','product_name','product_name_en','generic_name','brands','image_front_small_url',
-  'nova_group','nova_groups_markers','nutriscore_grade','nutriscore','nutriments','additives_tags','ingredients_text','ingredients_text_en',
+  'nova_group','nova_groups_markers','nutriscore_grade','nutriscore_score','nutriscore','nutriments','additives_tags','ingredients_text','ingredients_text_en',
   'categories_tags','categories_hierarchy','data_quality_errors_tags','last_modified_t'].join(',');
 const SEARCH_FIELDS = ['code','product_name','product_name_en','generic_name','brands','image_front_small_url',
-  'nova_group','nutriscore_grade','nutriments','additives_tags','ingredients_text','ingredients_text_en','categories_tags'].join(',');
+  'nova_group','nova_groups_markers','nutriscore_grade','nutriscore_score','nutriscore','nutriments','additives_tags','ingredients_text','ingredients_text_en','categories_tags'].join(',');
 const HIST_KEY = 'pantrycheck.history.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -288,7 +289,7 @@ const countOver = (v, t) => t.filter(x => v > x).length;
 function estimateNutriGrade(p){
   const x = nutr(p);
   if (x.sugar === null || x.sat === null || x.salt === null) return null;
-  if (isBeverage(p)) return x.sugar <= 1.5 ? 'b' : x.sugar <= 4 ? 'c' : x.sugar <= 6 ? 'd' : 'e';
+  if (isBeverage(p)) return {grade: x.sugar <= 1.5 ? 'b' : x.sugar <= 4 ? 'c' : x.sugar <= 6 ? 'd' : 'e', score:null};
   const N = Math.min(10, countOver(x.kj ?? 0, [335,670,1005,1340,1675,2010,2345,2680,3015,3350]))
           + Math.min(15, countOver(x.sugar, [3.4,6.8,10,14,17,20,24,27,31,34,37,41,44,48,51]))
           + Math.min(10, countOver(x.sat, [1,2,3,4,5,6,7,8,9,10]))
@@ -297,7 +298,7 @@ function estimateNutriGrade(p){
   const pro = N >= 11 ? 0 : countOver(x.protein ?? 0, [2.4,4.8,7.2,9.6,12,14,17]);
   const fvl = x.fvl ?? 0, fv = fvl > 80 ? 5 : fvl > 60 ? 2 : fvl > 40 ? 1 : 0;
   const sc = N - fib - pro - fv;
-  return sc <= 0 ? 'a' : sc <= 2 ? 'b' : sc <= 10 ? 'c' : sc <= 18 ? 'd' : 'e';
+  return {grade: sc <= 0 ? 'a' : sc <= 2 ? 'b' : sc <= 10 ? 'c' : sc <= 18 ? 'd' : 'e', score: sc};
 }
 // What stands out in the nutrition panel, good and bad
 function nutrientNotes(p){
@@ -354,22 +355,71 @@ function checkData(p){
 }
 
 /* ---------- Scoring ---------- */
-const NOVA_PTS = {1:34, 2:28, 3:18, 4:6};
+const SCORE_V = 2;          // bump when the scoring formula changes, so saved history gets recalculated
+const GREEN_FROM = 75;      // ultra-processed foods top out at 74, so they can never be green
+const NOVA_PTS = {1:34, 2:28, 3:18};
 const NOVA_LABEL = {1:'Unprocessed or minimally processed', 2:'Cooking ingredient', 3:'Processed food', 4:'Ultra-processed food'};
-const NUTRI_PTS = {a:33, b:26, c:18, d:9, e:2};
+const NUTRI_PTS = {a:33, b:26, c:18, d:9, e:2};               // used when only the grade is known
+const GRADE_BAND = {a:[28,33], b:[24,27], c:[14,23], d:[6,13], e:[0,5]};
+// Nutri-Score points (lower is healthier) mapped smoothly onto 0–33, lining up with the grade boundaries
+const FOOD_CURVE = [[-8,33],[0,28],[2,24],[10,14],[18,6],[30,0]];
+const DRINK_CURVE = [[-2,33],[2,24],[6,16],[9,9],[14,0]];
+function curve(pts, c){
+  if (pts <= c[0][0]) return c[0][1];
+  for (let i = 1; i < c.length; i++){
+    const [x0,y0] = c[i-1], [x1,y1] = c[i];
+    if (pts <= x1) return y0 + (y1 - y0) * (pts - x0) / (x1 - x0);
+  }
+  return c[c.length-1][1];
+}
+const uniqueMarkers = (p, g) => {
+  const mk = p.nova_groups_markers && p.nova_groups_markers[String(g)];
+  return Array.isArray(mk) ? new Set(mk.map(m => m && m[1]).filter(Boolean)).size : 0;
+};
+// Ultra-processed: 8 points with one sign of ultra-processing, down to 2 with seven or more; 5 if unknown
+const novaFourPts = n => n ? Math.max(2, 9 - n) : 5;
+
+function nutritionPart(p){
+  const ok = g => /^[a-e]$/.test(g || '');
+  const ns = p.nutriscore && p.nutriscore['2023'];
+  let grade = null, points = null, drink = isBeverage(p), estimated = false;
+  if (ns && ok(ns.grade)){
+    grade = ns.grade;
+    if (typeof ns.score === 'number') points = ns.score;
+    if (ns.data && typeof ns.data.is_beverage !== 'undefined') drink = !!Number(ns.data.is_beverage);
+  } else if (ok(p.nutriscore_grade)){
+    grade = p.nutriscore_grade;
+    if (typeof p.nutriscore_score === 'number') points = p.nutriscore_score;
+  } else {
+    const e = estimateNutriGrade(p);
+    if (e){ grade = e.grade; points = e.score; estimated = true; }
+  }
+  if (!grade) return {pts:null, max:33, label:'Unknown'};
+  let pts = NUTRI_PTS[grade], where = '';
+  if (points !== null){
+    const [lo, hi] = GRADE_BAND[grade];
+    // Keep within the grade's band, in case the points come from a different Nutri-Score version than the grade
+    pts = Math.round(Math.min(hi, Math.max(lo, curve(points, drink ? DRINK_CURVE : FOOD_CURVE))));
+    const f = (pts - lo) / (hi - lo);
+    where = f >= .67 ? 'better end' : f <= .33 ? 'worse end' : '';
+  }
+  const G = grade.toUpperCase();
+  return {pts, max:33, grade, estimated, where,
+    label:`Nutri-Score ${G}${where ? `, at the ${where} of ${G}` : ''}${estimated ? ' (estimated)' : ''}`};
+}
 
 function scoreProduct(p){
   const parts = {};
   const nova = Number(p.nova_group);
-  parts.processing = NOVA_PTS[nova] !== undefined
-    ? {pts:NOVA_PTS[nova], max:34, nova, label:`NOVA group ${nova}: ${NOVA_LABEL[nova]}`}
-    : {pts:null, max:34, label:'Unknown'};
-  let grade = (p.nutriscore && p.nutriscore['2023'] && p.nutriscore['2023'].grade) || p.nutriscore_grade;
-  let estimated = false;
-  if (!grade || !'abcde'.includes(grade)){ grade = estimateNutriGrade(p); estimated = !!grade; }
-  parts.nutrition = grade
-    ? {pts:NUTRI_PTS[grade], max:33, grade, estimated, label:`Nutri-Score ${grade.toUpperCase()}${estimated ? ' (estimated)' : ''}`}
-    : {pts:null, max:33, label:'Unknown'};
+  if (nova === 4){
+    const n = uniqueMarkers(p, 4);
+    parts.processing = {pts:novaFourPts(n), max:34, nova, markers:n, label:`NOVA group 4: ${NOVA_LABEL[4]}`};
+  } else if (NOVA_PTS[nova] !== undefined){
+    parts.processing = {pts:NOVA_PTS[nova], max:34, nova, label:`NOVA group ${nova}: ${NOVA_LABEL[nova]}`};
+  } else {
+    parts.processing = {pts:null, max:34, label:'Unknown'};
+  }
+  parts.nutrition = nutritionPart(p);
   const hasIngredients = !!(p.ingredients_text || p.ingredients_text_en);
   const tags = p.additives_tags || [];
   if (hasIngredients || tags.length){
@@ -383,9 +433,9 @@ function scoreProduct(p){
   const known = Object.values(parts).filter(x => x.pts !== null);
   if (parts.processing.pts === null && parts.nutrition.pts === null) return {total:null, parts};
   let total = Math.round(known.reduce((s,x)=>s+x.pts,0) / known.reduce((s,x)=>s+x.max,0) * 100);
-  let capped = false;
-  if (nova === 4 && total > 60){ total = 60; capped = true; }
-  return {total, parts, capped, partial: known.length < 3};
+  // With partial data the scaling could lift an ultra-processed food into green, so hold it just below
+  if (nova === 4) total = Math.min(total, GREEN_FROM - 1);
+  return {total, parts, partial: known.length < 3};
 }
 
 /* ---------- Explanations ---------- */
@@ -411,15 +461,22 @@ function markerNames(p, g){
 function processingWhy(p, part){
   if (part.pts === null) return 'There’s no ingredient list for this product in the database, so its processing level can’t be judged. The score uses the other parts only.';
   const m = markerNames(p, part.nova);
-  if (part.nova === 4 && m.length) return `${NOVA_WHY[4]} Signs of ultra-processing in the ingredients: ${joinList(m)}.`;
+  if (part.nova === 4){
+    const n = part.markers;
+    const scale = ' Ultra-processed foods score 2 to 8 here: the fewer signs of ultra-processing, the better.';
+    if (!n) return NOVA_WHY[4] + scale;
+    const more = n > m.length ? `, plus ${n - m.length} more` : '';
+    return `${NOVA_WHY[4]}${scale} This one has ${n} sign${n>1?'s':''}: ${joinList(m)}${more}.`;
+  }
   if (part.nova === 3 && m.length) return `${NOVA_WHY[3]} This one has added ${joinList(m)}.`;
   return NOVA_WHY[part.nova];
 }
 const GRADE_WHY = {a:'A very healthy nutrient balance.', b:'A good nutrient balance.', c:'An average nutrient balance.', d:'A poor nutrient balance.', e:'A very poor nutrient balance.'};
+const WHERE_WHY = {'better end':' It sits at the better end of its grade.', 'worse end':' It sits at the worse end of its grade.'};
 function nutritionWhy(p, part){
   if (part.pts === null) return 'The nutrition panel is missing from the database, so nutrition can’t be judged.';
   const {bad, good} = nutrientNotes(p);
-  let t = GRADE_WHY[part.grade];
+  let t = GRADE_WHY[part.grade] + (WHERE_WHY[part.where] || '');
   if (bad.length && good.length) t += ` It’s ${joinList(bad.map(b=>b.t))}, though it’s ${joinList(good)}.`;
   else if (bad.length) t += ` It’s ${joinList(bad.map(b=>b.t))}.`;
   else if (good.length) t += ` It’s ${joinList(good)}.`;
@@ -448,25 +505,48 @@ function summaryLine(p, s){
   if (f) r.push(`${f} additive${f>1?'s':''} of concern`);
   if (r.length) return `Held back by ${joinList(r)}.`;
   if (s.parts.processing.nova === 1 && s.parts.additives.pts === 33) return 'A whole food with nothing added.';
-  return s.total >= 70 ? 'Nothing major holding it back.' : '';
+  return s.total >= GREEN_FROM ? 'Nothing major holding it back.' : '';
 }
 
-const band = s => s === null || s === undefined ? 'n' : s >= 70 ? 'g' : s >= 40 ? 'a' : 'r';
+const band = s => s === null || s === undefined ? 'n' : s >= GREEN_FROM ? 'g' : s >= 40 ? 'a' : 'r';
 const VERDICT = {g:'Everyday food', a:'Sometimes food', r:'Treat food', n:'Not enough data'};
 const COLOR = {g:'var(--green)', a:'var(--amber)', r:'var(--red)', n:'var(--muted)'};
 
 /* ---------- History ---------- */
 function loadHist(){ try { return JSON.parse(localStorage.getItem(HIST_KEY)) || []; } catch { return []; } }
 function saveHist(h){ try { localStorage.setItem(HIST_KEY, JSON.stringify(h.slice(0,100))); } catch {} }
-function addHist(item){ const h = loadHist().filter(x => x.code !== item.code); h.unshift(item); saveHist(h); }
+function addHist(item){ const h = loadHist().filter(x => x.code !== item.code); h.unshift({...item, v:SCORE_V}); saveHist(h); }
+let refreshing = false;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function refreshHistory(){
+  if (refreshing) return;
+  refreshing = true;
+  try {
+    for (const item of loadHist()){
+      if (item.v === SCORE_V) continue;
+      let p = getLabel(item.code);
+      if (!p && !String(item.code).startsWith('label-')){
+        try { p = await fetchProduct(item.code); } catch { break; }  // offline: try again next time
+        await sleep(700);                                            // stay well inside the database's rate limit
+      }
+      const h = loadHist(), it = h.find(x => x.code === item.code);
+      if (!it) continue;
+      if (p) it.score = scoreProduct(p).total;
+      it.v = SCORE_V;
+      saveHist(h);
+      if (!$('#home').classList.contains('hidden')) renderHist();
+    }
+  } finally { refreshing = false; }
+}
 function renderHist(){
   const h = loadHist();
+  if (h.some(x => x.v !== SCORE_V)) refreshHistory();
   $('#clearHist').classList.toggle('hidden', !h.length);
   $('#histList').innerHTML = h.length ? h.map(x => `
     <li><button class="row" data-code="${esc(x.code)}">
       ${x.img ? `<img src="${esc(x.img)}" alt="" loading="lazy">` : '<span class="noimg"></span>'}
       <span class="t"><b>${esc(x.name)}</b><span>${esc(x.brand || '')}${x.brand ? ', ' : ''}${new Date(x.time).toLocaleDateString('en-AU',{day:'numeric',month:'short'})}</span></span>
-      <span class="pill ${band(x.score)}">${x.score ?? '?'}</span>
+      <span class="pill ${band(x.score)}${x.v === SCORE_V ? '' : ' old'}">${x.score ?? '?'}</span>
     </button></li>`).join('')
     : '<li class="empty" style="border:2px dashed var(--line)">Nothing scanned yet. Your scans will show up here.</li>';
 }
@@ -569,7 +649,7 @@ function renderResult(p, s){
       : `<button class="linkbtn" data-paste-code="${esc(p.code)}" data-from-off>Paste or photograph the label to fix it</button>`}</div>` : ''}
     ${p.source === 'label' ? `<div class="note info">Scored from label photos. <button class="linkbtn" data-edit-label>Edit details</button></div>` : ''}
     ${p.source !== 'label' && (s.partial || s.total === null) ? `<div class="note info">The database is missing some details for this product. <button class="linkbtn" data-label-code="${esc(p.code)}" data-from-off>Photograph the label to fill the gaps</button></div>` : ''}
-    ${s.capped ? `<div class="note warn">Capped at 60 because it's ultra-processed. Without the cap it would score higher, but ultra-processed foods can't be everyday foods.</div>` : ''}
+    ${s.parts.processing.nova === 4 && s.total >= 60 ? `<div class="note info">A better ultra-processed choice, but ultra-processed foods top out at 74, so they're never an everyday food.</div>` : ''}
     ${s.partial && s.total !== null ? `<div class="note warn">This score is based on partial data.</div>` : ''}
 
     <h2>Why this score</h2>
@@ -669,7 +749,7 @@ async function findAlternatives(p, cur){
   if (!top.length){
     if (!searched){
       status.innerHTML = `${busy ? 'The food database is busy right now.' : 'Couldn’t load alternatives.'} <button class="linkbtn" id="altRetry">Try again</button>`;
-    } else if (cur.total >= 70){
+    } else if (cur.total >= GREEN_FROM){
       status.textContent = `This is already one of the best choices among ${catName(cats[0])}.`;
     } else {
       status.textContent = `No higher-scoring ${catName(cats[0])} sold in Australia are in the database yet.`;
