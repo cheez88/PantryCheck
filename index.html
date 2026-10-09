@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#F4F6F1">
+<meta name="theme-color" content="#F4F6F1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121C17" media="(prefers-color-scheme: dark)">
 <title>Pantry Check</title>
 <link rel="icon" href="icon-192.png" sizes="192x192">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -140,6 +141,11 @@ details p{margin-top:10px;font-size:.95rem}
 .check input{width:22px;height:22px}
 .stack{display:flex;flex-direction:column;gap:10px;margin-top:14px}
 .btn:disabled{opacity:.5;cursor:default}
+.toast{position:fixed;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top,0px));z-index:30;max-width:516px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:var(--ink);color:var(--paper);box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.toast button{margin-left:auto;flex:none;border:0;border-radius:10px;padding:8px 14px;font-weight:700;background:var(--paper);color:var(--ink)}
+.install{margin-top:16px}
+.install .row2{display:flex;gap:8px;margin-top:10px}
+.install .btn{padding:12px;font-size:1rem}
 .dock{position:fixed;left:0;right:0;bottom:0;padding:12px 18px calc(12px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,var(--paper) 70%,transparent)}
 .dock .btn{max-width:504px;margin:0 auto}
 .spinner{width:36px;height:36px;border:4px solid var(--line);border-top-color:var(--ink);border-radius:50%;animation:spin 1s linear infinite;margin:60px auto 14px}
@@ -163,6 +169,15 @@ details p{margin-top:10px;font-size:.95rem}
     </form>
     <button class="linkbtn" id="noBarcode">No barcode? Add the label details instead</button>
     <p id="camError" class="note bad hidden"></p>
+    <p id="offlineNote" class="note warn hidden">You’re offline. Saved labels and products you’ve looked at before still open, but new barcodes need a connection.</p>
+    <div id="installBox" class="note info install hidden">
+      <b>Install Pantry Check</b>
+      <p id="installText" style="margin:4px 0 0"></p>
+      <div class="row2">
+        <button class="btn btn-main hidden" id="installBtn">Install app</button>
+        <button class="btn btn-ghost" id="installLater">Not now</button>
+      </div>
+    </div>
 
     <h2>Recent scans</h2>
     <ul class="hist" id="histList"></ul>
@@ -186,6 +201,7 @@ details p{margin-top:10px;font-size:.95rem}
       <p>75 and above is an everyday food, 40 to 74 is a sometimes food, and below 40 is a treat. Ultra-processed foods can score at most 74, so they can never show green.</p>
       <p>If a barcode isn't in the database, you can paste the label details from a shopping website, or photograph the label. Claude reads the nutrition panel and ingredients, you check the numbers, and the result is saved on your phone for next time.</p>
       <p class="muted">Product data comes from Open Food Facts, a free community database. Scores are a guide for making better choices, not medical advice.</p>
+      <p class="muted small" id="appVersion"></p>
     </details>
   </section>
 
@@ -202,6 +218,8 @@ details p{margin-top:10px;font-size:.95rem}
   <!-- RESULT -->
   <section id="result" class="hidden"></section>
 </div>
+
+<div class="toast hidden" id="updateToast" role="status"><span>A new version is ready.</span><button id="updateBtn">Update</button></div>
 
 <div class="dock hidden" id="dock"><button class="btn btn-main" id="scanAgain">Scan another</button></div>
 
@@ -1136,6 +1154,86 @@ document.addEventListener('click', e => {
   if (retry) return lookup(retry.dataset.retry);
 });
 renderHist();
+
+/* ---------- Installable app ---------- */
+const APP_VERSION = '2026.10.09';
+$('#appVersion').textContent = `App version ${APP_VERSION}`;
+const INSTALL_KEY = 'pantrycheck.installDismissed';
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+let installPrompt = null;
+
+function installDismissed(){
+  try { return Date.now() - Number(localStorage.getItem(INSTALL_KEY) || 0) < 30 * 864e5; } catch { return false; }
+}
+function updateInstallBox(){
+  const box = $('#installBox');
+  if (isStandalone() || installDismissed()) return box.classList.add('hidden');
+  if (installPrompt){
+    $('#installText').textContent = 'Add it to your home screen. It opens like an app and works offline for foods you’ve already checked.';
+    $('#installBtn').classList.remove('hidden');
+  } else if (isIOS){
+    $('#installText').textContent = 'Tap the Share button, then “Add to Home Screen”. Your scans are saved inside the installed app, so keep the icon: removing it from the home screen deletes them.';
+    $('#installBtn').classList.add('hidden');
+  } else {
+    return box.classList.add('hidden');
+  }
+  box.classList.remove('hidden');
+}
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; updateInstallBox(); });
+window.addEventListener('appinstalled', () => { installPrompt = null; $('#installBox').classList.add('hidden'); });
+$('#installBtn').onclick = async () => {
+  if (!installPrompt) return;
+  installPrompt.prompt();
+  try { await installPrompt.userChoice; } catch {}
+  installPrompt = null;
+  updateInstallBox();
+};
+$('#installLater').onclick = () => {
+  try { localStorage.setItem(INSTALL_KEY, String(Date.now())); } catch {}
+  $('#installBox').classList.add('hidden');
+};
+updateInstallBox();
+
+// Ask the browser not to clear saved data when the phone runs low on space (installed apps only)
+if (isStandalone() && navigator.storage && navigator.storage.persist)
+  navigator.storage.persisted().then(p => p || navigator.storage.persist()).catch(() => {});
+
+function updateOnline(){ $('#offlineNote').classList.toggle('hidden', navigator.onLine !== false); }
+window.addEventListener('online', updateOnline);
+window.addEventListener('offline', updateOnline);
+updateOnline();
+
+/* ---------- Updates ---------- */
+let reloading = false;
+function showUpdate(){ $('#updateToast').classList.remove('hidden'); }
+$('#updateBtn').onclick = async () => {
+  $('#updateBtn').disabled = true;
+  const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
+  if (reg && reg.waiting){ reloading = true; reg.waiting.postMessage({type:'SKIP_WAITING'}); }
+  else location.reload();
+};
+if ('serviceWorker' in navigator && window.isSecureContext){
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (reloading) location.reload(); });
+  navigator.serviceWorker.addEventListener('message', e => { if (e.data && e.data.type === 'PAGE_UPDATED') showUpdate(); });
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    const watch = w => w && w.addEventListener('statechange', () => {
+      if (w.state === 'installed' && navigator.serviceWorker.controller) showUpdate();
+    });
+    if (reg.waiting && navigator.serviceWorker.controller) showUpdate();
+    watch(reg.installing);
+    reg.addEventListener('updatefound', () => watch(reg.installing));
+    // Check for a new version whenever the app comes back to the screen
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
+  }).catch(() => {});
+  navigator.serviceWorker.ready.then(r => r.active && r.active.postMessage({type:'IS_PAGE_UPDATED'})).catch(() => {});
+}
+
+// Home-screen shortcut: open straight into the scanner
+if (new URLSearchParams(location.search).get('scan') === '1'){
+  history.replaceState(null, '', location.pathname);
+  startScan();
+}
 </script>
 </body>
 </html>
