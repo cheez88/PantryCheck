@@ -16,11 +16,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
 :root{
   --paper:#F4F6F1; --card:#FFFFFF; --ink:#17261E; --muted:#5B6961; --line:#DCE3DB;
-  --green:#2F8F4E; --amber:#D9981A; --red:#CF4337;
+  --green:#2F8F4E; --amber:#D9981A; --red:#CF4337; --low:#C2662B; --slate:#5F7387;
   --tint-green:#E2F1E6; --tint-amber:#FAF0D8; --tint-red:#FAE2DF;
   --display:"Bricolage Grotesque", "Arial Rounded MT Bold", system-ui, sans-serif;
   --body:"Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -31,18 +30,18 @@
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --paper:#121C17; --card:#1A2821; --ink:#E8EFE9; --muted:#A0AEA5; --line:#2B3B33;
-    --green:#4CB36D; --amber:#E6AE3A; --red:#E0645A;
+    --green:#4CB36D; --amber:#E6AE3A; --red:#E0645A; --low:#E0874F; --slate:#8FA2B5;
     --tint-green:#1F3A28; --tint-amber:#3A3120; --tint-red:#3E2522;
   }
 }
 *,*::before,*::after{box-sizing:border-box}
 html,body{margin:0}
 body{background:var(--paper);color:var(--ink);font:17px/1.5 var(--body);-webkit-font-smoothing:antialiased}
-button,input{font:inherit;color:inherit}
+button,input,textarea,select{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:3px solid var(--green);outline-offset:2px;border-radius:6px}
 img{max-width:100%}
-.wrap{max-width:540px;margin:0 auto;padding:20px 18px 120px}
+.wrap{max-width:540px;margin:0 auto;padding:20px 18px 170px}
 h1,h2,h3{font-family:var(--display);line-height:1.1;margin:0}
 h1{font-size:2.6rem;font-weight:800;letter-spacing:-.02em}
 h2{font-size:1.35rem;font-weight:800;margin:32px 0 12px}
@@ -70,7 +69,8 @@ p{margin:0 0 10px}
 .row .t span{font-size:.85rem;color:var(--muted)}
 .pill{flex:none;min-width:44px;text-align:center;font-family:var(--display);font-weight:800;padding:4px 8px;border-radius:999px;color:#fff}
 .pill.old{opacity:.45}
-.g{background:var(--green)} .a{background:var(--amber)} .r{background:var(--red)} .n{background:var(--muted)}
+.g{background:var(--green)} .a{background:var(--amber)} .r{background:var(--low)} .n{background:var(--muted)} .c{background:var(--slate)}
+.pill:empty{min-width:22px;height:22px;padding:0}
 .empty{padding:18px;border:2px dashed var(--line);border-radius:14px;color:var(--muted)}
 details{margin-top:28px;border-top:1px solid var(--line);padding-top:14px}
 summary{font-weight:700;cursor:pointer}
@@ -79,10 +79,16 @@ details p{margin-top:10px;font-size:.95rem}
 
 /* scanner */
 .scanner{position:fixed;inset:0;background:#000;z-index:10;display:flex;flex-direction:column;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
-#reader{flex:1;width:100%;overflow:hidden}
-#reader video{object-fit:cover;width:100%!important;height:100%!important}
-#reader img{display:none}
-#reader__dashboard_section_csr span{color:#fff}
+#reader{flex:1;width:100%;position:relative;overflow:hidden;cursor:crosshair}
+#camVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.scanbox{position:absolute;left:10%;right:10%;top:50%;transform:translateY(-50%);aspect-ratio:2/1;max-height:60%;border-radius:16px;border:3px solid rgba(255,255,255,.95);box-shadow:0 0 0 100vmax rgba(0,0,0,.45);pointer-events:none}
+.scanbox i{position:absolute;left:6%;right:6%;top:50%;height:2px;background:rgba(255,90,80,.9)}
+.focusring{position:absolute;width:72px;height:72px;margin:-36px 0 0 -36px;border:2px solid #FFD54A;border-radius:50%;pointer-events:none;animation:ring .9s ease-out forwards}
+@keyframes ring{from{transform:scale(1.4);opacity:1}to{transform:scale(1);opacity:0}}
+.camstatus{position:absolute;left:50%;top:14px;transform:translateX(-50%);margin:0;padding:6px 12px;border-radius:999px;background:rgba(0,0,0,.6);color:#fff;font-size:.85rem;white-space:nowrap}
+.camtools{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.tool{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;border-radius:999px;padding:8px 14px;font-weight:700;font-size:.9rem}
+.tool[aria-pressed="true"]{background:#fff;color:#000}
 .scanner .bar{padding:16px 18px;display:flex;flex-direction:column;gap:10px}
 .scanner .hint{color:#fff;text-align:center;margin:0}
 .scanner .btn-ghost{color:#fff;border-color:#555}
@@ -90,6 +96,7 @@ details p{margin-top:10px;font-size:.95rem}
 /* result */
 .back{background:none;border:0;padding:6px 0;font-weight:700;color:var(--muted)}
 .hero{display:flex;gap:20px;align-items:center;margin:14px 0 8px}
+.hero > div:last-child{min-width:0}
 .sticker{flex:none;width:150px;height:150px;border-radius:50%;display:grid;place-items:center;color:#fff;transform:rotate(-6deg);position:relative;box-shadow:0 6px 0 rgba(0,0,0,.12)}
 .sticker::after{content:"";position:absolute;inset:8px;border-radius:50%;border:2px dashed rgba(255,255,255,.55)}
 .sticker .num{font-family:var(--display);font-weight:800;font-size:4rem;line-height:1;letter-spacing:-.03em}
@@ -125,6 +132,31 @@ details p{margin-top:10px;font-size:.95rem}
 .why{font-size:.95rem;margin:8px 0 0}
 .summary{margin:6px 0 0;font-size:1rem;color:var(--muted)}
 .chip small{font-weight:400;opacity:.8}
+.chip.t-high{background:var(--tint-red);border-color:transparent;font-weight:700}
+.chip.t-moderate{background:var(--tint-amber);border-color:transparent;font-weight:700}
+.au{display:block;color:var(--muted);font-size:.85rem;margin-top:2px}
+.sticker .word{font-family:var(--display);font-weight:800;font-size:1.55rem;line-height:1.05;text-align:center;padding:0 14px;hyphens:manual}
+.reasons{margin:8px 0 0;padding-left:18px;color:var(--ink);font-size:.98rem}
+.reasons li{margin:2px 0}
+.badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.badge{font-size:.8rem;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--card);border:1px solid var(--line)}
+.badge.warn{background:var(--tint-amber);border-color:transparent}
+.badge.ok{background:var(--tint-green);border-color:transparent}
+.flags{list-style:none;margin:0;padding:0}
+.flags li{padding:10px 12px;border-radius:12px;background:var(--tint-amber);margin-bottom:8px}
+.flags b{display:block}
+.flags span{font-size:.92rem}
+.adjlist{list-style:none;margin:6px 0 0;padding:0;font-size:.92rem}
+.adjlist li{display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--line)}
+.adjlist b{flex:none;min-width:38px;font-family:var(--display)}
+.aisle{margin-top:6px}
+.hist li.me{background:var(--card)}
+.preview{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.preview div{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 4px;text-align:center;font-size:.78rem;color:var(--muted)}
+.preview b{display:block;font-family:var(--display);font-size:1rem;color:var(--ink)}
+.preview .miss b{color:var(--muted)}
+#nutriPreview{margin-top:8px}
+#pasteNutri{white-space:pre;overflow-x:auto;tab-size:10;font-size:.9rem;line-height:1.6}
 .note.info{background:var(--card);border:1px solid var(--line)}
 .note .linkbtn{padding:0}
 .shots{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 8px}
@@ -146,7 +178,88 @@ details p{margin-top:10px;font-size:.95rem}
 .install{margin-top:16px}
 .install .row2{display:flex;gap:8px;margin-top:10px}
 .install .btn{padding:12px;font-size:1rem}
-.dock{position:fixed;left:0;right:0;bottom:0;padding:12px 18px calc(12px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,var(--paper) 70%,transparent)}
+.dock{position:fixed;left:0;right:0;bottom:calc(62px + env(safe-area-inset-bottom,0px));padding:12px 18px;background:linear-gradient(to top,var(--paper) 70%,transparent);z-index:8}
+.navbar{position:fixed;left:0;right:0;bottom:0;z-index:9;display:flex;justify-content:center;background:var(--card);border-top:1px solid var(--line);padding:0 0 env(safe-area-inset-bottom,0px)}
+.navbar button{flex:1;max-width:135px;height:62px;border:0;background:none;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:.78rem;font-weight:700}
+.navbar button.on{color:var(--green)}
+.tabtitle{margin-bottom:6px}
+.seg{display:flex;gap:4px;background:var(--line);padding:4px;border-radius:12px;margin:6px 0 16px}
+.seg button{flex:1;border:0;background:none;padding:9px 4px;border-radius:9px;font-weight:700;font-size:.9rem;color:var(--muted)}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.daychips{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px;scrollbar-width:none}
+.daychip{flex:none;min-width:60px;border:2px solid var(--line);background:var(--card);border-radius:12px;padding:7px 8px;font-weight:700;font-size:.9rem;display:flex;flex-direction:column;align-items:center}
+.daychip i{font-style:normal;font-weight:400;font-size:.68rem;color:var(--muted)}
+.daychip.today{border-color:var(--amber)}
+.daychip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.daychip.on i{color:var(--paper);opacity:.75}
+.meals{list-style:none;margin:0;padding:0}
+.meals li{background:var(--card);border-radius:14px;padding:12px 14px;margin-bottom:8px;position:relative}
+.meals .slot,.lbrow .slot{font-size:.78rem;font-weight:700;color:var(--muted)}
+.lbtag{background:var(--tint-amber);color:var(--ink);border-radius:999px;padding:1px 7px;margin-left:4px;font-size:.7rem}
+.mname{font-family:var(--display);font-weight:600;font-size:1.08rem;margin:2px 64px 6px 0;line-height:1.2}
+.meals .linkbtn{position:absolute;right:14px;top:10px}
+.mtip{font-size:.85rem;color:var(--muted);margin:6px 0 0}
+.extra{font-size:.9rem;font-weight:700;color:var(--green);margin:-2px 0 6px}
+.sps{display:flex;flex-wrap:wrap;gap:5px}
+.sp{font-size:.78rem;padding:2px 8px;border-radius:999px;background:var(--paper);border:1px solid var(--line)}
+.person,.member{background:var(--card);border-radius:14px;padding:12px 14px;margin-bottom:8px}
+.pname{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.pname .linkbtn{margin-left:auto}
+.av{font-size:1.5rem;line-height:1}
+.bars{display:grid;gap:5px}
+.bar{display:grid;grid-template-columns:54px 1fr 64px;align-items:center;gap:8px;font-size:.82rem}
+.bar i{height:9px;background:var(--line);border-radius:5px;overflow:hidden}
+.bar em{display:block;height:100%;border-radius:5px}
+.bar small{color:var(--muted);text-align:right}
+.scanchips{display:flex;flex-wrap:wrap;gap:8px}
+.scanchips .chip{cursor:pointer}
+.lbday{background:var(--card);border-radius:14px;padding:12px 14px;margin-bottom:8px}
+.lbday h3{margin-bottom:6px}
+.lbrow{display:grid;grid-template-columns:96px 1fr;gap:8px;padding:5px 0;border-top:1px solid var(--line);font-size:.95rem}
+.tips{margin-top:16px}
+.shop{list-style:none;margin:0;padding:0}
+.shop .aisle-h{font-family:var(--display);font-weight:800;margin:16px 0 4px}
+.shop label{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.shop label span{flex:1}
+.shop label b{font-weight:400;color:var(--muted);font-size:.9rem;text-align:right}
+.shop input{width:20px;height:20px}
+.shop input:checked + span{text-decoration:line-through;color:var(--muted)}
+.who{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:6px}
+.whochip{flex:none;display:flex;align-items:center;gap:6px;border:2px solid var(--line);background:var(--card);border-radius:999px;padding:6px 14px 6px 8px;font-weight:700}
+.whochip.on{border-color:var(--green);background:var(--tint-green)}
+.celebrate{display:flex;gap:14px;align-items:center;background:var(--tint-green);border-radius:14px;padding:12px 14px;margin-top:10px}
+.bigsticker{font-size:2.6rem;line-height:1}
+.streak{font-weight:700;margin:10px 0 0}
+.ate{list-style:none;margin:0;padding:0}
+.ate label{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.ate input{width:22px;height:22px;flex:none}
+.ate small{display:block;color:var(--muted);font-size:.75rem;font-weight:700}
+.groups{display:grid;gap:8px}
+.grp{background:var(--card);border-radius:14px;padding:10px 12px}
+.grp.met{background:var(--tint-green)}
+.gtop{display:flex;justify-content:space-between;gap:8px;font-weight:700;font-size:.92rem;margin-bottom:8px}
+.gtop b{font-weight:400;color:var(--muted);white-space:nowrap}
+.dots{display:flex;flex-wrap:wrap;gap:8px}
+.dot{width:34px;height:34px;border-radius:50%;border:2px solid var(--green);background:transparent;padding:0}
+.dot.full{background:var(--green)}
+.dot.half{background:linear-gradient(90deg,var(--green) 50%,transparent 50%)}
+.dot.extra{border-style:dashed}
+.dot.water{border-color:#3B8ED0}
+.dot.water.full{background:#3B8ED0}
+.tried{margin-top:14px}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.wd{background:var(--card);border-radius:12px;text-align:center;padding:6px 0}
+.wd small{display:block;color:var(--muted);font-size:.72rem}
+.wd span{font-size:1.5rem;line-height:1.3}
+.wd.now{outline:2px solid var(--amber)}
+.reward{margin-top:12px}
+.mform{background:var(--card);border-radius:14px;padding:14px;margin:10px 0}
+.avpick{display:flex;flex-wrap:wrap;gap:6px}
+.avpick button{font-size:1.5rem;width:44px;height:44px;border-radius:12px;border:2px solid var(--line);background:var(--paper)}
+.avpick button.on{border-color:var(--green);background:var(--tint-green)}
+.row2{display:flex;gap:8px}
+.schooldays{display:flex;flex-wrap:wrap;gap:6px}
+.schooldays label{display:flex;gap:4px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:5px 10px;font-weight:400}
 .dock .btn{max-width:504px;margin:0 auto}
 .spinner{width:36px;height:36px;border:4px solid var(--line);border-top-color:var(--ink);border-radius:50%;animation:spin 1s linear infinite;margin:60px auto 14px}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -184,7 +297,9 @@ details p{margin-top:10px;font-size:.95rem}
     <button class="linkbtn hidden" id="clearHist">Clear history</button>
 
     <details id="setupBox">
-      <summary>Label reading setup</summary>
+      <summary>Settings</summary>
+      <label class="check" style="margin-top:12px"><input type="checkbox" id="kidsToggle"> Kids mode: show everyday, sometimes or occasionally, without numbers</label>
+      <h3 style="margin-top:6px">Label reading</h3>
       <p>To score food from label photos, enter your Cloudflare Worker address and app token. Each phone needs this once.</p>
       <div class="field"><label for="setUrl">Worker address</label><input id="setUrl" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://pantry-check-label.yourname.workers.dev"></div>
       <div class="field"><label for="setToken">App token</label><input id="setToken" type="password" autocomplete="off"></div>
@@ -194,11 +309,13 @@ details p{margin-top:10px;font-size:.95rem}
 
     <details>
       <summary>How the score works</summary>
-      <p>Every food gets up to 100 points from three equal parts:</p>
-      <p><b>Processing (34 points)</b> uses the NOVA system. Fresh and whole foods score highest. Ultra-processed foods score 2 to 8, depending on how many ultra-processed ingredients they contain.</p>
-      <p><b>Nutrition (33 points)</b> uses the 2024 Nutri-Score, which penalises sugar, saturated fat and salt, and rewards fibre, protein and fruit and vegetables. It uses the points behind the grade, so two products with the same grade can still score differently.</p>
-      <p><b>Additives (33 points)</b> loses 2 points for most additives and 8 points for additives with health concerns, like certain artificial colours, preservatives and sweeteners. Natural ones like citric acid and pectin cost nothing.</p>
-      <p>75 and above is an everyday food, 40 to 74 is a sometimes food, and below 40 is a treat. Ultra-processed foods can score at most 74, so they can never show green.</p>
+      <p>Every food gets up to 100 points from three parts. Nutrition counts most, because it’s the best guide to what a food does for you. Processing still counts for a lot.</p>
+      <p><b>Nutrition (60 points)</b> uses the 2023/24 Nutri-Score, which penalises sugar, saturated fat, salt and kilojoules and rewards fibre, protein and fruit and vegetables. The app adds three rules of its own: points off for added sugar found in the ingredients (Australian labels only show total sugar), the same sweetener penalty for foods that Nutri-Score uses for drinks, no credit for protein or fibre added to sugary products, and an allowance for plain cheese, because Nutri-Score doesn’t count its calcium.</p>
+      <p><b>Processing (30 points)</b> uses the NOVA system. Whole foods get 30 and processed foods 21. Ultra-processed foods get 14 with one sign of ultra-processing or 10 with more, with extra points off for sweetened drinks and processed meats, and some back for high-fibre, low-sugar bread and cereal and for unsweetened yoghurt. Cooking ingredients like sugar, butter and oil aren’t scored.</p>
+      <p><b>Additives (10 points)</b> loses 4 for each additive of high concern, like nitrites in processed meat, 2 for moderate concern, 1 for low concern, and 1 for each additive beyond three (up to 2). Harmless ones like citric acid and pectin cost nothing.</p>
+      <p><b>Limits.</b> Confectionery (sugar-free included) and soft drinks never score above 39, and nor does anything with a Nutri-Score E. Biscuits, cakes, chips, processed meats and cereals with more than 15g of sugar per 100g stop at 59. To be an everyday food, a product needs a Nutri-Score of A or B, no additives of high concern and a full ingredient list.</p>
+      <p>75 and above is an everyday food, 40 to 74 a sometimes food, and below 40 an occasional food. Products without a nutrition panel aren’t scored until you add the label details.</p>
+      <p>The weights and limits come from a review of the evidence in October 2026. They’re judgement calls, so treat scores as a guide.</p>
       <p>If a barcode isn't in the database, you can paste the label details from a shopping website, or photograph the label. Claude reads the nutrition panel and ingredients, you check the numbers, and the result is saved on your phone for next time.</p>
       <p class="muted">Product data comes from Open Food Facts, a free community database. Scores are a guide for making better choices, not medical advice.</p>
       <p class="muted small" id="appVersion"></p>
@@ -217,7 +334,19 @@ details p{margin-top:10px;font-size:.95rem}
 
   <!-- RESULT -->
   <section id="result" class="hidden"></section>
+
+  <!-- PLANNER -->
+  <section id="plan" class="hidden"></section>
+  <section id="today" class="hidden"></section>
+  <section id="family" class="hidden"></section>
 </div>
+
+<nav class="navbar" aria-label="Sections">
+  <button data-tab="scan" class="on" aria-current="page"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 8v8M10 8v8M14 8v8M17 8v8"/></svg>Scan</button>
+  <button data-tab="plan"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M7 13h4M7 17h7"/></svg>Plan</button>
+  <button data-tab="today"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l2.6 5.6 6.1.6-4.6 4.1 1.3 6-5.4-3.1-5.4 3.1 1.3-6L3.3 9.2l6.1-.6z"/></svg>Today</button>
+  <button data-tab="family"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M2.5 20c.6-3.6 2.8-5.5 5.5-5.5s4.9 1.9 5.5 5.5M14 15.2c.9-.5 1.9-.7 3-.7 2.4 0 4 1.7 4.5 5.5"/></svg>Family</button>
+</nav>
 
 <div class="toast hidden" id="updateToast" role="status"><span>A new version is ready.</span><button id="updateBtn">Update</button></div>
 
@@ -225,9 +354,19 @@ details p{margin-top:10px;font-size:.95rem}
 
 <!-- SCANNER -->
 <div class="scanner hidden" id="scanner" role="dialog" aria-label="Barcode scanner">
-  <div id="reader"></div>
+  <div id="reader">
+    <video id="camVideo" playsinline muted autoplay></video>
+    <div class="scanbox" id="scanbox"><i></i></div>
+    <span class="focusring hidden" id="focusRing"></span>
+    <p class="camstatus hidden" id="camStatus"></p>
+  </div>
   <div class="bar">
-    <p class="hint">Point the camera at the barcode</p>
+    <p class="hint" id="scanHint" aria-live="polite">Hold the phone about 20 cm away, roughly a ruler’s length. The barcode only needs to fit in the box.</p>
+    <div class="camtools">
+      <button class="tool hidden" id="torchBtn" aria-pressed="false">Light</button>
+      <button class="tool hidden" id="zoomBtn" aria-pressed="false">1× zoom</button>
+      <button class="tool hidden" id="lensBtn">Switch camera</button>
+    </div>
     <button class="btn btn-ghost" id="cancelScan">Cancel</button>
   </div>
 </div>
@@ -236,9 +375,9 @@ details p{margin-top:10px;font-size:.95rem}
 const API = 'https://world.openfoodfacts.org';
 const FIELDS = ['code','product_name','product_name_en','generic_name','brands','image_front_small_url',
   'nova_group','nova_groups_markers','nutriscore_grade','nutriscore_score','nutriscore','nutriments','additives_tags','ingredients_text','ingredients_text_en',
-  'categories_tags','categories_hierarchy','data_quality_errors_tags','last_modified_t'].join(',');
+  'categories_tags','categories_hierarchy','data_quality_errors_tags','last_modified_t','labels_tags','serving_quantity'].join(',');
 const SEARCH_FIELDS = ['code','product_name','product_name_en','generic_name','brands','image_front_small_url',
-  'nova_group','nova_groups_markers','nutriscore_grade','nutriscore_score','nutriscore','nutriments','additives_tags','ingredients_text','ingredients_text_en','categories_tags'].join(',');
+  'nova_group','nova_groups_markers','nutriscore_grade','nutriscore_score','nutriscore','nutriments','additives_tags','ingredients_text','ingredients_text_en','categories_tags','labels_tags','serving_quantity','last_modified_t'].join(',');
 const HIST_KEY = 'pantrycheck.history.v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -246,55 +385,72 @@ const joinList = a => a.length <= 1 ? (a[0] || '') : a.slice(0,-1).join(', ') + 
 const cap = t => t ? t[0].toUpperCase() + t.slice(1) : t;
 const fmt = v => v < 10 ? +v.toFixed(1) : Math.round(v);
 
-/* ---------- Additives ---------- */
-const FLAG_GROUPS = [
-  {codes:['e102','e104','e110','e122','e124','e129'], why:'Artificial colour linked to hyperactivity in some children'},
-  {codes:['e150c','e150d'], why:'Caramel colour that can contain 4-MEI, a possible carcinogen'},
-  {codes:['e171'], why:'Titanium dioxide, banned as a food additive in the EU since 2022'},
-  {codes:['e249','e250','e251','e252'], why:'Nitrite or nitrate preservative, linked to bowel cancer risk in processed meat'},
-  {codes:['e210','e211','e212','e213'], why:'Benzoate preservative; can form benzene with vitamin C and may affect behaviour in children'},
-  {codes:['e220','e221','e222','e223','e224','e225','e226','e227','e228'], why:'Sulphite preservative that can trigger asthma'},
-  {codes:['e280','e281','e282','e283'], why:'Propionate bread preservative, linked in some studies to irritability in children'},
-  {codes:['e310','e319','e320','e321'], why:'Synthetic antioxidant with ongoing safety questions'},
-  {codes:['e338','e339','e340','e341','e450','e451','e452'], why:'Phosphate additive; high intake linked to heart and kidney concerns'},
-  {codes:['e407','e407a','e433','e466'], why:'Emulsifier or thickener linked to gut inflammation in animal studies'},
-  {codes:['e950','e951','e952','e954','e955','e961','e962'], why:'Artificial sweetener; the WHO advises against sweeteners for weight control'},
+/* ---------- Additives ----------
+   Four tiers, from the October 2026 scoring review. Point values are design judgements; the reasons summarise the
+   evidence, and "au" gives the Australian regulator's view where it differs from Europe's. */
+const ADD_TIERS = [
+  {tier:'high', pts:4, codes:['249','250','251','252'], why:'Preservative used in cured meats. Processed meat is a known cause of bowel cancer, and a 2026 French study linked nitrites to prostate cancer.', au:'Permitted in Australia within set limits.'},
+  {tier:'high', pts:4, codes:['102','104','110','122','124','129'], why:'Synthetic colour linked to hyperactivity in some children in a 2007 UK trial. The EU requires a warning label.', au:'FSANZ found no risk to Australians in 2008, so no warning is needed here.'},
+  {tier:'high', pts:4, codes:['320'], why:'Synthetic antioxidant (BHA) classed as a possible human carcinogen.', au:'Permitted in Australia within set limits.'},
+  {tier:'moderate', pts:2, codes:['171'], why:'Whitening agent the EU withdrew in 2022 as a precaution, because DNA damage couldn’t be ruled out.', au:'Still permitted. FSANZ, the UK and the WHO’s expert committee found no safety concern.'},
+  {tier:'moderate', pts:2, codes:['210','211','212','213'], why:'Preservative that can form traces of benzene with vitamin C in drinks, and was part of the UK hyperactivity trial.'},
+  {tier:'moderate', pts:2, codes:['220','221','222','223','224','225','226','227','228'], why:'Preservative that can trigger asthma. Europe couldn’t confirm a safe daily intake in 2022.', au:'Allowed in more foods here than in the EU, including sausages. Labels must declare it.'},
+  {tier:'moderate', pts:2, codes:['310','311','312','319','321'], why:'Synthetic antioxidant with low safe-intake limits and ongoing safety questions.'},
+  {tier:'moderate', pts:2, codes:['338','339','340','341','343','450','451','452'], why:'Phosphate additive. High phosphate intake is linked to heart and kidney problems, and Europe lowered its safe limit in 2019.'},
+  {tier:'moderate', pts:2, codes:['407','407a','433','435','436','466'], why:'Emulsifier or thickener linked to gut inflammation in animal studies and a small human trial.'},
+  {tier:'moderate', pts:2, codes:['950','951','952','954','955','956','957','959','961','962','969'], why:'Intense sweetener. The WHO advises against sweeteners for weight control, and some are linked to health risks in observational studies.'},
+  {tier:'moderate', pts:2, codes:['967','968'], why:'Sugar alcohol linked to a blood-clotting risk in 2023–24 studies.'},
+  {tier:'moderate', pts:2, codes:['123','127'], why:'Synthetic colour with a low safe-intake limit, restricted in some countries.'},
+  {tier:'moderate', pts:2, codes:['173','541','554','555','556','559'], why:'Aluminium-based additive. Europe has restricted several of these because aluminium builds up in the body.'},
+  {tier:'low', pts:1, codes:['471','472a','472b','472c','472d','472e','472f','476','481','482'], why:'Emulsifier linked in a large French study to slightly higher heart disease and cancer risk.'},
+  {tier:'low', pts:1, codes:['412','414','415'], why:'Gum linked in one French study to slightly higher type 2 diabetes risk.'},
+  {tier:'low', pts:1, codes:['150b','150c','150d'], why:'Caramel colour that can contain traces of 4-MEI. Europe found no concern at permitted levels.'},
+  {tier:'low', pts:1, codes:['280','281','282','283'], why:'Bread preservative. A small 2002 study linked it to irritability in children, but it hasn’t been repeated.'},
+  {tier:'low', pts:1, codes:['200','201','202','203'], why:'Sorbate preservative, a low concern.'},
+  {tier:'low', pts:1, codes:['620','621','622','623','624','625','626','627','628','629','630','631','632','633','634','635'], why:'Flavour enhancer used to make processed food more appealing.'},
+  {tier:'low', pts:1, codes:['960','960a','960b','960c'], why:'Plant-based sweetener. A low concern, but it still keeps the taste for sweetness up.'},
+  {tier:'low', pts:1, codes:['420','421','953','965','966'], why:'Sugar alcohol. Large amounts can have a laxative effect.'},
 ];
-const FLAGGED = {};
-FLAG_GROUPS.forEach(g => g.codes.forEach(c => FLAGGED[c] = g.why));
-const BENIGN = new Set(['e100','e101','e140','e160a','e160c','e162','e163','e170','e260','e270','e290','e296','e297',
-  'e300','e301','e302','e304','e306','e307','e308','e309','e322','e325','e326','e327','e330','e331','e332','e333','e334',
-  'e392','e400','e401','e406','e410','e412','e414','e415','e418','e440','e500','e501','e503','e504','e509','e516','e575',
-  'e938','e941','e948']);
+const TIER_OF = {};
+ADD_TIERS.forEach(g => g.codes.forEach(c => TIER_OF[c] = g));
+const BENIGN = new Set(['100','101','140','150a','160a','160c','162','163','170','260','270','290','296','297',
+  '300','301','302','304','306','307','308','309','316','322','325','326','327','330','331','332','333','334',
+  '392','400','401','406','410','418','440','500','501','503','504','509','516','575','938','941','948']);
+const TIER_LABEL = {high:'High concern', moderate:'Moderate concern', low:'Low concern', other:'Other additive', ok:'No concern'};
 const ADD_NAMES = {e100:'curcumin',e101:'riboflavin',e102:'tartrazine',e104:'quinoline yellow',e110:'sunset yellow',e120:'cochineal',
-  e122:'azorubine',e124:'ponceau 4R',e129:'allura red',e133:'brilliant blue',e150a:'caramel',e150c:'ammonia caramel',e150d:'sulphite ammonia caramel',
-  e160a:'beta-carotene',e160b:'annatto',e160c:'paprika extract',e162:'beetroot red',e170:'calcium carbonate',e171:'titanium dioxide',
+  e122:'azorubine',e123:'amaranth',e124:'ponceau 4R',e127:'erythrosine',e129:'allura red',e133:'brilliant blue',e150a:'caramel',e150b:'caustic sulphite caramel',e150c:'ammonia caramel',e150d:'sulphite ammonia caramel',
+  e160a:'beta-carotene',e160b:'annatto',e160c:'paprika extract',e162:'beetroot red',e170:'calcium carbonate',e171:'titanium dioxide',e173:'aluminium',
   e200:'sorbic acid',e202:'potassium sorbate',e211:'sodium benzoate',e220:'sulphur dioxide',e223:'sodium metabisulphite',e250:'sodium nitrite',
   e252:'potassium nitrate',e260:'acetic acid',e270:'lactic acid',e281:'sodium propionate',e282:'calcium propionate',e290:'carbon dioxide',
-  e296:'malic acid',e300:'vitamin C',e306:'vitamin E',e307:'vitamin E',e319:'TBHQ',e320:'BHA',e321:'BHT',e322:'lecithin',
+  e296:'malic acid',e300:'vitamin C',e306:'vitamin E',e307:'vitamin E',e316:'sodium erythorbate',e319:'TBHQ',e320:'BHA',e321:'BHT',e322:'lecithin',
   e330:'citric acid',e331:'sodium citrate',e339:'sodium phosphate',e341:'calcium phosphate',e401:'sodium alginate',e407:'carrageenan',
-  e410:'locust bean gum',e412:'guar gum',e414:'acacia gum',e415:'xanthan gum',e420:'sorbitol',e422:'glycerol',e433:'polysorbate 80',
+  e410:'locust bean gum',e412:'guar gum',e414:'acacia gum',e415:'xanthan gum',e420:'sorbitol',e421:'mannitol',e422:'glycerol',e433:'polysorbate 80',
   e440:'pectin',e450:'diphosphates',e451:'triphosphates',e452:'polyphosphates',e466:'cellulose gum',e471:'mono- and diglycerides',
-  e472e:'DATEM',e476:'PGPR',e481:'sodium stearoyl lactylate',e500:'baking soda',e503:'ammonium carbonate',e621:'MSG',
-  e627:'disodium guanylate',e631:'disodium inosinate',e635:'ribonucleotides',e950:'acesulfame K',e951:'aspartame',e952:'cyclamate',
-  e954:'saccharin',e955:'sucralose',e960:'stevia',e965:'maltitol',e1422:'modified starch',e1442:'modified starch',e1450:'modified starch'};
+  e472e:'DATEM',e476:'PGPR',e481:'sodium stearoyl lactylate',e500:'baking soda',e503:'ammonium carbonate',e541:'sodium aluminium phosphate',e621:'MSG',
+  e627:'disodium guanylate',e631:'disodium inosinate',e635:'ribonucleotides',e950:'acesulfame K',e951:'aspartame',e952:'cyclamate',e953:'isomalt',
+  e954:'saccharin',e955:'sucralose',e956:'alitame',e957:'thaumatin',e960:'stevia',e960a:'stevia',e961:'neotame',e962:'aspartame-acesulfame salt',
+  e965:'maltitol',e966:'lactitol',e967:'xylitol',e968:'erythritol',e969:'advantame',e1422:'modified starch',e1442:'modified starch',e1450:'modified starch'};
 const stripRoman = c => c.replace(/(iii|ii|iv|i|v)$/,'');
 const additiveName = c => ADD_NAMES[c] || ADD_NAMES[stripRoman(c)] || '';
+const addCode = tag => tag.replace(/^[a-z]{2}:/,'').toLowerCase().replace(/^e/,'');
 
 function classifyAdditive(tag){
-  const code = tag.replace(/^[a-z]{2}:/,'').toLowerCase();
-  const base = stripRoman(code);
-  const label = code.startsWith('e') ? 'E' + code.slice(1) : code;
-  const name = additiveName(code);
-  if (FLAGGED[code] || FLAGGED[base]) return {code:label, name, kind:'flag', why:FLAGGED[code] || FLAGGED[base], pts:8};
-  if (BENIGN.has(code) || BENIGN.has(base)) return {code:label, name, kind:'ok', pts:0};
-  return {code:label, name, kind:'minor', pts:2};
+  const code = addCode(tag), base = stripRoman(code);
+  const label = 'E' + code;
+  const name = additiveName('e' + code);
+  const g = TIER_OF[code] || TIER_OF[base];
+  if (g) return {code:label, num:base, name, tier:g.tier, pts:g.pts, why:g.why, au:g.au || ''};
+  if (BENIGN.has(code) || BENIGN.has(base)) return {code:label, num:base, name, tier:'ok', pts:0};
+  return {code:label, num:base, name, tier:'other', pts:1, why:'No specific concern, but counted as a sign of processing.'};
 }
 
 /* ---------- Nutrients ---------- */
+const tagsOf = p => (p.categories_tags || []).concat(p.categories_hierarchy || []);
+const hasTag = (p, re) => tagsOf(p).some(t => re.test(t));
+const ingText = p => p.ingredients_text_en || p.ingredients_text || '';
 function isBeverage(p){
-  const c = p.categories_tags || [];
-  return c.includes('en:beverages') && !c.some(x => /milks|yogurt|dairies/.test(x));
+  if (p.label && typeof p.label.is_beverage === 'boolean') return p.label.is_beverage;
+  return hasTag(p, /^en:beverages$/) && !hasTag(p, /yogh?urts|dairy-desserts/);
 }
 function nutr(p){
   const n = p.nutriments || {};
@@ -304,27 +460,14 @@ function nutr(p){
     fvl: g('fruits-vegetables-legumes-estimate-from-ingredients_100g') ?? g('fruits-vegetables-nuts-estimate-from-ingredients_100g')};
 }
 const countOver = (v, t) => t.filter(x => v > x).length;
-function estimateNutriGrade(p){
-  const x = nutr(p);
-  if (x.sugar === null || x.sat === null || x.salt === null) return null;
-  if (isBeverage(p)) return {grade: x.sugar <= 1.5 ? 'b' : x.sugar <= 4 ? 'c' : x.sugar <= 6 ? 'd' : 'e', score:null};
-  const N = Math.min(10, countOver(x.kj ?? 0, [335,670,1005,1340,1675,2010,2345,2680,3015,3350]))
-          + Math.min(15, countOver(x.sugar, [3.4,6.8,10,14,17,20,24,27,31,34,37,41,44,48,51]))
-          + Math.min(10, countOver(x.sat, [1,2,3,4,5,6,7,8,9,10]))
-          + Math.min(20, countOver(x.salt, Array.from({length:20},(_,i)=>+(0.2*(i+1)).toFixed(1))));
-  const fib = countOver(x.fibre ?? 0, [3.0,4.1,5.2,6.3,7.4]);
-  const pro = N >= 11 ? 0 : countOver(x.protein ?? 0, [2.4,4.8,7.2,9.6,12,14,17]);
-  const fvl = x.fvl ?? 0, fv = fvl > 80 ? 5 : fvl > 60 ? 2 : fvl > 40 ? 1 : 0;
-  const sc = N - fib - pro - fv;
-  return {grade: sc <= 0 ? 'a' : sc <= 2 ? 'b' : sc <= 10 ? 'c' : sc <= 18 ? 'd' : 'e', score: sc};
-}
+
 // What stands out in the nutrition panel, good and bad
 function nutrientNotes(p){
-  const x = nutr(p), drink = isBeverage(p), k = drink ? .5 : 1, per = `per 100${drink ? 'ml' : 'g'}`;
+  const x = nutr(p), drink = isBeverage(p), k = drink ? .5 : 1, per = `per 100${drink ? 'mL' : 'g'}`;
   const bad = [], good = [];
   if (x.sugar !== null){
     if (x.sugar > 22.5*k) bad.push({t:`high in sugar (${fmt(x.sugar)}g ${per})`, short:'high sugar'});
-    else if (x.sugar > 10*k) bad.push({t:`fairly sugary (${fmt(x.sugar)}g ${per})`});
+    else if (x.sugar > 10*k) bad.push({t:`fairly sugary (${fmt(x.sugar)}g ${per})`, short:'fairly sugary'});
     else if (x.sugar <= 5*k) good.push(`low in sugar (${fmt(x.sugar)}g)`);
   }
   if (x.sat !== null){
@@ -372,16 +515,162 @@ function checkData(p){
   return {issues, stale};
 }
 
-/* ---------- Scoring ---------- */
-const SCORE_V = 2;          // bump when the scoring formula changes, so saved history gets recalculated
-const GREEN_FROM = 75;      // ultra-processed foods top out at 74, so they can never be green
-const NOVA_PTS = {1:34, 2:28, 3:18};
+/* ---------- What the ingredients reveal ---------- */
+const INTENSE = new Set(['950','951','952','954','955','956','957','959','960','960a','960b','960c','961','962','969']);
+const POLYOLS = new Set(['420','421','953','965','966','967','968']);
+const INTENSE_NAMES = [['aspartame'],['sucralose'],['acesulfame','acesulfame K'],['saccharin'],['cyclamate'],['steviol','stevia'],['stevia'],['monk fruit'],['luo han guo','monk fruit'],['neotame'],['advantame'],['thaumatin']];
+const POLYOL_NAMES = [['maltitol'],['isomalt'],['sorbitol'],['xylitol'],['erythritol'],['mannitol'],['lactitol']];
+function sweetenerInfo(p){
+  const intense = new Set(), polyols = new Set();
+  (p.additives_tags || []).forEach(t => {
+    const c = addCode(t), b = stripRoman(c);
+    const nm = additiveName('e' + b) || 'E' + b;
+    if (INTENSE.has(c) || INTENSE.has(b)) intense.add(nm);
+    else if (POLYOLS.has(b)) polyols.add(nm);
+  });
+  const ing = ingText(p).toLowerCase();
+  INTENSE_NAMES.forEach(([k, nm]) => { if (ing.includes(k)) intense.add(nm || k); });
+  POLYOL_NAMES.forEach(([k]) => { if (ing.includes(k)) polyols.add(k); });
+  return {intense:[...intense], polyols:[...polyols], any: intense.size + polyols.size > 0};
+}
+
+// Added sugars as defined for "no added sugar" claims (FSANZ P1062): sugars, syrups, honey, malt, maltodextrin,
+// and concentrated or deionised fruit juice
+const SUGAR_RE = /\b((?:raw|brown|cane|caster|castor|icing|white|demerara|muscovado|coconut|palm|invert|liquid|fruit|grape)\s+sugars?|sugars?|glucose(?:[- ]fructose)?(?:\s+(?:syrup|solids))?|dextrose|fructose(?:\s+syrup)?|sucrose|maltose|high[- ]fructose\s+corn\s+syrup|(?:golden|maple|rice\s+malt|brown\s+rice|rice|corn|agave|date|tapioca|cane|invert|sugar|fruit|oat)\s+syrup|treacle|molasses|honey|(?:barley\s+)?malt(?:\s+extract)?(?!\s+vinegar)|maltodextrins?|(?:concentrated|deionised|deionized)\s+(?:[a-z]+\s+){0,2}juices?|(?:[a-z]+\s+){0,2}juice\s+concentrates?|evaporated\s+cane\s+juice|caramel(?!\s+colou?r)|panela|rapadura)\b/gi;
+const JUICE_CONC_RE = /juice\s+concentrate|concentrated\s+(?:[a-z]+\s+){0,2}juice|deioni[sz]ed\s+(?:[a-z]+\s+){0,2}juice/i;
+const FRUIT_PASTE_RE = /\b(?:fruit|apple|pear|date|grape|mango|apricot|strawberry|raspberry|banana|prune|fig)s?\s+(?:paste|purée|puree|powder)s?\b/i;
+// The first few ingredients at the top level (commas inside brackets belong to a compound ingredient)
+const topIngredients = (ing, n) => ing.replace(/^ingredients?\s*:\s*/i,'').split(/,(?![^(]*\))/).slice(0, n).join(',');
+function addedSugarInfo(p){
+  const ing = ingText(p).toLowerCase().replace(/no added sugar|sugar[- ]free|reduced sugar/g, ' ');
+  const names = new Set();
+  let m;
+  SUGAR_RE.lastIndex = 0;
+  while ((m = SUGAR_RE.exec(ing))){
+    let nm = m[1].replace(/\s+/g,' ').trim();
+    if (/juice/.test(nm)) nm = 'fruit juice concentrate';
+    else if (/^sugars$/.test(nm)) nm = 'sugar';
+    else if (/maltodextrins/.test(nm)) nm = 'maltodextrin';
+    names.add(nm);
+  }
+  return {names:[...names], concentrate: JUICE_CONC_RE.test(ing) || FRUIT_PASTE_RE.test(topIngredients(ing, 3))};
+}
+const ISOLATE_RE = /\b(?:(?:whey|milk|soy|soya|pea|rice|wheat|faba|fava|potato)\s+protein(?:\s+(?:isolate|concentrate|hydrolysate))?|protein\s+(?:isolate|concentrate|blend|crisps?)|vital\s+wheat\s+gluten|wheat\s+gluten|collagen(?:\s+peptides)?|(?:oat|wheat|corn|soluble|bamboo|citrus|sugar\s*cane|cane)\s+fib(?:re|er)|inulin|chicory(?:\s+root)?\s+(?:fib(?:re|er)|extract)|oligofructose|polydextrose|resistant\s+(?:starch|dextrin|maltodextrin)|isomalto-?oligosaccharides?)\b/i;
+
+/* Food-type checks (Open Food Facts category tags, or the "food type" typed on the label screen) */
+const RE = {
+  confectionery: /^en:(confectioner(?:y|ies)|candies|candy|sweets|lollies|chocolates?|chewing-gums?|marshmallows|lollipops|liquorices?|licorices?|jelly-beans|mints|toffees|fudges|caramels|gummies|sugar-free-candies)$|-(candies|confectioneries|chocolates|chewing-gums|lollies|gummies|toffees|marshmallows)$/,
+  softDrink: /^en:(sodas|soft-drinks|colas|carbonated-soft-drinks|energy-drinks|lemonades|iced-teas|cordials|flavoured-waters|flavored-waters|sweetened-beverages|artificially-sweetened-beverages|sugary-drinks|sports-drinks)$|-(sodas|colas|energy-drinks|lemonades|cordials|soft-drinks)$/,
+  sometimes: /^en:(biscuits|sweet-biscuits|cookies|cakes|pastries|viennoiseries|muffins|doughnuts|donuts|crisps|chips|potato-crisps|corn-chips|tortilla-chips|chips-and-fries|french-fries|ice-creams|frozen-desserts|processed-meats|prepared-meats|hams|bacons|bacon|sausages|salamis|frankfurters|cured-meats|deli-meats|cold-cuts|pies|meat-pies|sausage-rolls)$|-(biscuits|cookies|cakes|crisps|ice-creams|hams|sausages|salamis|bacons|pies)$/,
+  notSometimes: /rice-cakes|corn-cakes|fish-cakes|oat-cakes|crispbreads|crackers|potato-cakes/,
+  cerealOrBar: /^en:(breakfast-cereals|cereal-bars|muesli-bars|granola-bars|snack-bars|protein-bars)$|-(breakfast-cereals|cereal-bars|muesli-bars)$/,
+  processedMeat: /^en:(processed-meats|prepared-meats|hams|bacons|bacon|sausages|salamis|frankfurters|cured-meats|deli-meats|cold-cuts|corned-beef)$|-(hams|sausages|salamis|bacons)$/,
+  redMeat: /beef|lamb|pork|veal|mutton|venison|goat-meat|hams?$|bacons?|sausages|salamis|red-meats|processed-meats|prepared-meats/,
+  cheese: /^en:(cheeses|.+-cheeses)$/,
+  bread: /^en:(breads|.+-breads|sliced-breads|wraps|flatbreads|bread-rolls)$/,
+  cereal: /^en:(breakfast-cereals|.+-breakfast-cereals|mueslis|porridge-oats|rolled-oats)$/,
+  yoghurt: /yogh?urts?$/,
+  milk: /^en:(milks|cow-milks|whole-milks|skimmed-milks|semi-skimmed-milks|full-cream-milks|uht-milks|fresh-milks|reduced-fat-milks)$/,
+  juice: /^en:(fruit-juices|juices|vegetable-juices|.+-juices)$/,
+  notJuice: /nectars|juice-drinks|fruit-drinks|cordials/,
+  water: /^en:(waters|mineral-waters|natural-mineral-waters|spring-waters|carbonated-waters|sparkling-waters|still-waters|unflavoured-waters)$/,
+  fat: /^en:(fats|vegetable-fats|vegetable-oils|olive-oils|extra-virgin-olive-oils|oils|.+-oils|butters|margarines|spreadable-fats|nuts|seeds|tree-nuts|peanuts|almonds|walnuts|cashew-nuts|nut-butters|peanut-butters|almond-butters)$/,
+  kids: /baby|babies|toddler|kids|children|infant/,
+};
+const KIDS_NAME = /\b(kids?|little|toddler|junior|bubs|baby|babies)\b/i;
+const FIRST_SWEET = /^(?:sugar|glucose syrup|glucose|maltitol|isomalt|sorbitol|xylitol|erythritol|polydextrose|sweetener)/i;
+
+function productFacts(p){
+  const x = nutr(p), sweet = sweetenerInfo(p), added = addedSugarInfo(p);
+  const drink = isBeverage(p);
+  const name = (p.product_name_en || p.product_name || '') + ' ' + (p.generic_name || '');
+  const ing = ingText(p).trim();
+  const firstIng = ing.toLowerCase().replace(/^ingredients?\s*:\s*/,'').split(/[,(]/)[0].trim();
+  const juice = hasTag(p, RE.juice) && !hasTag(p, RE.notJuice);
+  const plainMilk = hasTag(p, RE.milk) && !added.names.length && !sweet.any && !/flavou?r|chocolate|strawberry|banana|coffee|iced/i.test(name);
+  const sweetDrink = drink && !juice && !plainMilk && !hasTag(p, RE.water) && (added.names.length > 0 || sweet.any);
+  return {x, sweet, added, drink, name, ing, firstIng, juice, plainMilk, sweetDrink,
+    isolates: ISOLATE_RE.test(ing),
+    confectionery: hasTag(p, RE.confectionery) || (!drink && (/^(sweeteners?|maltitol|isomalt|sorbitol|xylitol|erythritol|polydextrose)\b/.test(firstIng)
+      || (FIRST_SWEET.test(firstIng) && x.sugar !== null && x.sugar >= 40))),
+    softDrink: drink && (hasTag(p, RE.softDrink) || (sweetDrink && !hasTag(p, /milk|dairy|yogh?urt/))),
+    sometimesCat: hasTag(p, RE.sometimes) && !hasTag(p, RE.notSometimes),
+    sugaryCereal: hasTag(p, RE.cerealOrBar) && x.sugar !== null && x.sugar > 15,
+    processedMeat: hasTag(p, RE.processedMeat),
+    kids: hasTag(p, RE.kids) || KIDS_NAME.test(name),
+    hasIngredients: ing.length > 0 || (p.additives_tags || []).length > 0};
+}
+
+/* ---------- Nutri-Score ----------
+   The official 2023 (foods) and 2024 (beverages) algorithm. The point tables follow the published update; the grade
+   cut-offs used below should be checked against Open Food Facts' own code if results ever disagree. */
+const NS = {
+  energy:[335,670,1005,1340,1675,2010,2345,2680,3015,3350],
+  sugar:[3.4,6.8,10,14,17,20,24,27,31,34,37,41,44,48,51],
+  sat:[1,2,3,4,5,6,7,8,9,10],
+  salt:Array.from({length:20},(_,i)=>+(0.2*(i+1)).toFixed(1)),
+  fibre:[3.0,4.1,5.2,6.3,7.4],
+  protein:[2.4,4.8,7.2,9.6,12,14,17],
+  satEnergy:[120,240,360,480,600,720,840,960,1080,1200],
+  satRatio:[10,16,22,28,34,40,46,52,58,64],
+  dEnergy:[30,90,150,210,240,270,300,330,360,390],
+  dSugar:[0.5,2,3.5,5,6,7,8,9,10,11],
+  dProtein:[1.2,1.5,1.8,2.1,2.4,2.7,3.0],
+};
+function nsKind(p, f){
+  const d = p.nutriscore && p.nutriscore['2023'] && p.nutriscore['2023'].data;
+  if (d){
+    if (Number(d.is_water)) return 'water';
+    if (Number(d.is_beverage)) return 'drink';
+    if (Number(d.is_fat_oil_nuts_seeds)) return 'fat';
+  }
+  if (f.drink) return hasTag(p, RE.water) && !f.sweet.any && (f.x.sugar ?? 0) <= 0.5 ? 'water' : 'drink';
+  return hasTag(p, RE.fat) ? 'fat' : 'food';
+}
+function nsGrade(points, kind){
+  if (kind === 'water') return 'a';
+  if (kind === 'drink') return points <= 2 ? 'b' : points <= 6 ? 'c' : points <= 9 ? 'd' : 'e';
+  if (kind === 'fat') return points <= -6 ? 'a' : points <= 2 ? 'b' : points <= 10 ? 'c' : points <= 18 ? 'd' : 'e';
+  return points <= 0 ? 'a' : points <= 2 ? 'b' : points <= 10 ? 'c' : points <= 18 ? 'd' : 'e';
+}
+// Returns Nutri-Score points (lower is healthier), or null without the core of a nutrition panel
+function computeNS(p, f, kind, o = {}){
+  const x = f.x;
+  if (x.kj === null || x.sugar === null || x.sat === null || x.salt === null) return null;
+  if (kind === 'water') return -15;
+  const fv = x.fvl ?? 0;
+  if (kind === 'drink'){
+    const N = countOver(x.kj, NS.dEnergy) + countOver(x.sugar, NS.dSugar) + countOver(x.sat, NS.sat) + countOver(x.salt, NS.salt) + (o.sweetPts || 0);
+    const P = (o.noProFib ? 0 : countOver(x.protein ?? 0, NS.dProtein) + countOver(x.fibre ?? 0, NS.fibre)) + (fv > 80 ? 6 : fv > 60 ? 4 : fv > 40 ? 2 : 0);
+    return N - P;
+  }
+  const fat = kind === 'fat';
+  const N = (fat ? countOver(x.sat * 37, NS.satEnergy) : countOver(x.kj, NS.energy))
+          + countOver(x.sugar, NS.sugar)
+          + (fat ? (x.fat ? countOver(x.sat / x.fat * 100, NS.satRatio) : 0) : countOver(x.sat, NS.sat))
+          + countOver(x.salt, NS.salt) + (o.sweetPts || 0);
+  let pro = countOver(x.protein ?? 0, NS.protein);
+  if (hasTag(p, RE.redMeat)) pro = Math.min(pro, 2);
+  const proteinOff = !hasTag(p, RE.cheese) && N >= (fat ? 7 : 11);
+  const P = (fv > 80 ? 5 : fv > 60 ? 2 : fv > 40 ? 1 : 0) + (o.noProFib ? 0 : countOver(x.fibre ?? 0, NS.fibre) + (proteinOff ? 0 : pro));
+  return N - P;
+}
+
+/* ---------- Scoring ----------
+   Nutrition 60, processing 30, additives 10, then caps. Weights and caps are design judgements from the
+   October 2026 review: nutrition leads, processing still counts for a lot, additives are proportionate. */
+const SCORE_V = 4;          // bump when the scoring formula changes, so saved history gets recalculated
+const GREEN_FROM = 75;
+const W = {nutrition:60, processing:30, additives:10};
 const NOVA_LABEL = {1:'Unprocessed or minimally processed', 2:'Cooking ingredient', 3:'Processed food', 4:'Ultra-processed food'};
 const NUTRI_PTS = {a:33, b:26, c:18, d:9, e:2};               // used when only the grade is known
 const GRADE_BAND = {a:[28,33], b:[24,27], c:[14,23], d:[6,13], e:[0,5]};
-// Nutri-Score points (lower is healthier) mapped smoothly onto 0–33, lining up with the grade boundaries
-const FOOD_CURVE = [[-8,33],[0,28],[2,24],[10,14],[18,6],[30,0]];
-const DRINK_CURVE = [[-2,33],[2,24],[6,16],[9,9],[14,0]];
+// Nutri-Score points mapped smoothly onto 0–33 (then scaled to the nutrition weight), lining up with each grade's band
+const CURVES = {
+  food: [[-8,33],[0,28],[2,24],[10,14],[18,6],[30,0]],
+  fat:  [[-12,33],[-6,28],[2,24],[10,14],[18,6],[30,0]],
+  drink:[[-2,33],[2,24],[6,16],[9,9],[14,0]],
+};
 function curve(pts, c){
   if (pts <= c[0][0]) return c[0][1];
   for (let i = 1; i < c.length; i++){
@@ -390,150 +679,270 @@ function curve(pts, c){
   }
   return c[c.length-1][1];
 }
-const uniqueMarkers = (p, g) => {
-  const mk = p.nova_groups_markers && p.nova_groups_markers[String(g)];
-  return Array.isArray(mk) ? new Set(mk.map(m => m && m[1]).filter(Boolean)).size : 0;
-};
-// Ultra-processed: 8 points with one sign of ultra-processing, down to 2 with seven or more; 5 if unknown
-const novaFourPts = n => n ? Math.max(2, 9 - n) : 5;
+// Ultra-processing markers from Open Food Facts, counting ingredients and additives only (not category-based ones)
+function upMarkers(p){
+  const mk = p.nova_groups_markers && p.nova_groups_markers['4'];
+  if (!Array.isArray(mk)) return [];
+  const seen = new Set(), out = [];
+  for (const it of mk){
+    const [type, tag] = it || [];
+    if (!tag || type === 'categories') continue;
+    const c = tag.replace(/^[a-z]{2}:/,'');
+    const name = type === 'additives' ? (additiveName(c) || 'E' + c.replace(/^e/,'')) : c.replace(/-/g,' ');
+    if (seen.has(name)) continue;
+    seen.add(name); out.push(name);
+  }
+  return out;
+}
 
-function nutritionPart(p){
-  const ok = g => /^[a-e]$/.test(g || '');
+function nutritionPart(p, f){
+  const adj = [];
+  const kind = nsKind(p, f);
   const ns = p.nutriscore && p.nutriscore['2023'];
-  let grade = null, points = null, drink = isBeverage(p), estimated = false;
-  if (ns && ok(ns.grade)){
-    grade = ns.grade;
-    if (typeof ns.score === 'number') points = ns.score;
-    if (ns.data && typeof ns.data.is_beverage !== 'undefined') drink = !!Number(ns.data.is_beverage);
-  } else if (ok(p.nutriscore_grade)){
-    grade = p.nutriscore_grade;
-    if (typeof p.nutriscore_score === 'number') points = p.nutriscore_score;
+  const official = ns && /^[a-e]$/.test(ns.grade || '') ? {grade: ns.grade, points: typeof ns.score === 'number' ? ns.score : null} : null;
+  const legacy = !official && /^[a-e]$/.test(p.nutriscore_grade || '') ? {grade: p.nutriscore_grade, points: typeof p.nutriscore_score === 'number' ? p.nutriscore_score : null} : null;
+  const fortified = f.isolates && f.x.sugar !== null && f.x.sugar >= 15;
+  // Sweeteners: Nutri-Score already penalises intense sweeteners in drinks. The app adds the same penalty to foods,
+  // and to drinks sweetened only with sugar alcohols, so "sugar-free" products don't get a free pass.
+  const appSweet = f.sweet.any && (kind === 'food' || kind === 'fat' || (kind === 'drink' && !f.sweet.intense.length));
+  const officialSweet = kind === 'drink' && f.sweet.intense.length > 0;
+  let points = null, source = '';
+  if (official && official.points !== null && !fortified){
+    points = official.points + (appSweet ? 4 : 0); source = 'off';
   } else {
-    const e = estimateNutriGrade(p);
-    if (e){ grade = e.grade; points = e.score; estimated = true; }
+    const c = computeNS(p, f, kind, {noProFib: fortified, sweetPts: (appSweet || officialSweet) ? 4 : 0});
+    if (c !== null){ points = c; source = 'computed'; }
   }
-  if (!grade) return {pts:null, max:33, label:'Unknown'};
-  let pts = NUTRI_PTS[grade], where = '';
+  if (fortified && points !== null) adj.push({part:'nutrition', text:'Added protein or fibre in a product with 15g or more sugar per 100g, so it gets no credit for protein or fibre.'});
+  if (appSweet && points !== null) adj.push({part:'nutrition', text:`Sweetened with ${joinList([...f.sweet.intense, ...f.sweet.polyols].slice(0,3))}, so it’s scored as if it had 4 extra Nutri-Score penalty points (an app rule: Nutri-Score itself only does this for drinks).`});
+  // Cheese: Nutri-Score gives no credit for calcium, but the Australian Dietary Guidelines count cheese as a core
+  // dairy food. Plain cheese gets 6 points of allowance. It can't make cheese an everyday food on its own: the
+  // green check uses the grade before the allowance.
+  let gateGrade = null;
+  if (points !== null && hasTag(p, RE.cheese) && [1, 3].includes(Number(p.nova_group)) && !f.added.names.length){
+    gateGrade = nsGrade(points, kind);
+    points -= 6;
+    adj.push({part:'nutrition', text:`Cheese allowance: Nutri-Score doesn’t count calcium, but the dietary guidelines treat cheese as a core dairy food, so it’s scored as if it had 6 fewer penalty points (an app rule).`});
+  }
+  let grade, pts;
   if (points !== null){
+    grade = nsGrade(points, kind);
     const [lo, hi] = GRADE_BAND[grade];
-    // Keep within the grade's band, in case the points come from a different Nutri-Score version than the grade
-    pts = Math.round(Math.min(hi, Math.max(lo, curve(points, drink ? DRINK_CURVE : FOOD_CURVE))));
-    const f = (pts - lo) / (hi - lo);
-    where = f >= .67 ? 'better end' : f <= .33 ? 'worse end' : '';
+    pts = kind === 'water' ? 33 : Math.min(hi, Math.max(lo, curve(points, CURVES[kind] || CURVES.food)));
+  } else if (official || legacy){
+    grade = (official || legacy).grade; pts = NUTRI_PTS[grade]; source = 'grade';
+  } else {
+    return {pts:null, max:W.nutrition, label:'Unknown', adj};
   }
+  let where = '';
+  if (points !== null && kind !== 'water'){
+    const [lo, hi] = GRADE_BAND[grade], fr = (pts - lo) / (hi - lo);
+    where = fr >= .67 ? 'better end' : fr <= .33 ? 'worse end' : '';
+  }
+  pts = pts * W.nutrition / 33;
+  // Added sugar from the ingredient list (Australian labels only show total sugars)
+  let sugarPen = 0;
+  const s = f.x.sugar;
+  if (f.added.names.length && s !== null && !f.plainMilk && !f.juice && !(hasTag(p, RE.yoghurt) && !f.added.names.length)){
+    const t = f.drink ? [2.5, 5, 8] : [5, 10, 20];
+    sugarPen = s > t[2] ? 8 : s > t[1] ? 6 : s > t[0] ? 3 : 0;
+    if (sugarPen) adj.push({part:'nutrition', pts:-sugarPen, text:`Added sugar (${joinList(f.added.names.slice(0,4))}) with ${fmt(s)}g of sugar per 100${f.drink ? 'mL' : 'g'}.`});
+  }
+  pts = Math.max(0, Math.round(pts - sugarPen));
   const G = grade.toUpperCase();
-  return {pts, max:33, grade, estimated, where,
-    label:`Nutri-Score ${G}${where ? `, at the ${where} of ${G}` : ''}${estimated ? ' (estimated)' : ''}`};
+  return {pts, max:W.nutrition, grade, gateGrade: gateGrade || grade, kind, nsPoints:points, source, where, adj,
+    label:`Nutri-Score ${G}${where ? `, at the ${where} of ${G}` : ''}${source === 'computed' && !official ? ' (worked out from the nutrition panel)' : ''}`};
+}
+
+function processingPart(p, f){
+  const nova = Number(p.nova_group), adj = [];
+  if (nova === 2) return {pts:null, max:W.processing, nova, cooking:true, label:`NOVA group 2: ${NOVA_LABEL[2]}`, adj};
+  if (nova === 1) return {pts:30, max:W.processing, nova, label:`NOVA group 1: ${NOVA_LABEL[1]}`, adj};
+  if (nova === 3) return {pts:21, max:W.processing, nova, label:`NOVA group 3: ${NOVA_LABEL[3]}`, adj};
+  if (nova !== 4) return {pts:15, max:W.processing, estimated:true, label:'Unknown, estimated at half marks', adj};
+  const markers = upMarkers(p);
+  let pts = markers.length === 1 ? 14 : markers.length >= 2 ? 10 : 12;
+  if (f.sweetDrink && !hasTag(p, /milk|dairy|yogh?urt/)){ pts -= 6; adj.push({part:'processing', pts:-6, text:'Ultra-processed sugary or sweetened drink: the type most strongly linked to harm.'}); }
+  if (f.processedMeat){ pts -= 4; adj.push({part:'processing', pts:-4, text:'Ultra-processed meat: the type most strongly linked to harm.'}); }
+  const x = f.x;
+  const coreGrain = (hasTag(p, RE.bread) || hasTag(p, RE.cereal)) && x.fibre !== null && x.fibre >= 6 && x.sugar !== null && x.sugar <= 5;
+  const plainYog = hasTag(p, RE.yoghurt) && !f.added.names.length && !f.sweet.any;
+  if (coreGrain || plainYog){
+    pts += 6;
+    adj.push({part:'processing', pts:6, text: coreGrain
+      ? 'High-fibre, low-sugar bread or cereal: large studies don’t link these to the harms of other ultra-processed foods.'
+      : 'Unsweetened yoghurt: large studies don’t link it to the harms of other ultra-processed foods.'});
+  }
+  return {pts:Math.max(0, Math.min(W.processing, pts)), max:W.processing, nova, markers, adj, label:`NOVA group 4: ${NOVA_LABEL[4]}`};
+}
+
+function additivesPart(p, f){
+  const adj = [];
+  if (!f.hasIngredients) return {pts:5, max:W.additives, list:[], estimated:true, label:'Unknown, estimated', adj};
+  const list = (p.additives_tags || []).map(classifyAdditive);
+  let lost = list.reduce((s, a) => s + a.pts, 0);
+  const extra = Math.min(2, Math.max(0, list.length - 3));
+  if (extra){ lost += extra; adj.push({part:'additives', pts:-extra, text:`${list.length} additives in total: −1 for each beyond three, as a sign of heavy processing.`}); }
+  const codes = new Set(list.map(a => a.num));
+  if (f.drink && ['210','211','212','213'].some(c => codes.has(c)) && (['300','301','302'].some(c => codes.has(c)) || /vitamin c|ascorbic/i.test(f.ing))){
+    lost += 1; adj.push({part:'additives', pts:-1, text:'Benzoate preservative with vitamin C in a drink, which can form traces of benzene.'});
+  }
+  if (f.kids && (f.sweet.intense.length || list.some(a => ['102','104','110','122','124','129'].includes(a.num)))){
+    lost += 1; adj.push({part:'additives', pts:-1, text:'A product aimed at children that contains sweeteners or colours linked to hyperactivity.'});
+  }
+  return {pts:Math.max(0, W.additives - lost), max:W.additives, list, adj,
+    label: list.length ? `${list.length} additive${list.length > 1 ? 's' : ''}` : 'None found'};
 }
 
 function scoreProduct(p){
-  const parts = {};
-  const nova = Number(p.nova_group);
-  if (nova === 4){
-    const n = uniqueMarkers(p, 4);
-    parts.processing = {pts:novaFourPts(n), max:34, nova, markers:n, label:`NOVA group 4: ${NOVA_LABEL[4]}`};
-  } else if (NOVA_PTS[nova] !== undefined){
-    parts.processing = {pts:NOVA_PTS[nova], max:34, nova, label:`NOVA group ${nova}: ${NOVA_LABEL[nova]}`};
-  } else {
-    parts.processing = {pts:null, max:34, label:'Unknown'};
+  const f = productFacts(p);
+  const parts = {processing: processingPart(p, f), nutrition: nutritionPart(p, f), additives: additivesPart(p, f)};
+  const adjustments = [...parts.nutrition.adj, ...parts.processing.adj, ...parts.additives.adj];
+  const flags = marketingFlags(p, f, parts);
+  const base = {parts, facts:f, adjustments, flags, caps:[]};
+  if (parts.processing.cooking) return {...base, adjustments:[], total:null, band:'c', confidence: parts.nutrition.pts === null ? 'none' : 'complete'};
+  if (parts.nutrition.pts === null) return {...base, total:null, band:'n', confidence:'none'};
+  const estimated = parts.processing.estimated || parts.additives.estimated;
+  const raw = parts.nutrition.pts + parts.processing.pts + parts.additives.pts;
+  const caps = [];
+  const g = parts.nutrition.grade, gg = parts.nutrition.gateGrade || g;
+  if (f.confectionery) caps.push({max:39, why:'Confectionery is always an occasional food, sugar-free or not.'});
+  if (f.softDrink) caps.push({max:39, why:'Soft drinks, cordials and energy drinks are always occasional drinks.'});
+  if (g === 'e') caps.push({max:39, why:'Nutri-Score E: a very poor nutrient balance.'});
+  if (f.sometimesCat || f.processedMeat) caps.push({max:59, why:'Under the Australian Dietary Guidelines this type of food is a sometimes food at best.'});
+  if (f.sugaryCereal) caps.push({max:59, why:'Breakfast cereals and bars with more than 15g of sugar per 100g are a sometimes food at best.'});
+  if (parts.processing.nova === 4 && (f.sweet.any || [...(p.additives_tags || [])].some(t => /^(6[2-3]\d)$/.test(addCode(t)))))
+    caps.push({max:59, why:'Ultra-processed with sweeteners or flavour enhancers.'});
+  // Everyday (green) has to be earned
+  const high = parts.additives.list.filter(a => a.tier === 'high');
+  const notGreen = [];
+  if (!['a','b'].includes(gg) && !(f.plainMilk && gg === 'c')) notGreen.push('Nutri-Score A or B');
+  if (high.length) notGreen.push('no additives of high concern');
+  if (estimated) notGreen.push('a full ingredient list');
+  if (notGreen.length) caps.push({max:GREEN_FROM - 1, why:`An everyday food needs ${joinList(notGreen)}.`});
+  let total = Math.round(raw);
+  const applied = caps.filter(c => c.max < total).sort((a, b) => a.max - b.max);
+  if (applied.length) total = applied[0].max;
+  return {...base, total, raw: Math.round(raw), caps: applied.length ? [applied[0]] : [], allCaps: caps,
+    band: band(total), confidence: estimated ? 'estimated' : 'complete'};
+}
+
+/* ---------- Marketing checks (shown, not scored) ---------- */
+const CLAIM_RE = /no-added|sugar-free|low-(sugar|fat|salt|sodium)|fat-free|high-(protein|fibre|fiber)|source-of|whole-?grain|no-(preservatives|artificial|colou?r)|natural|lite|light|reduced-/;
+function marketingFlags(p, f, parts){
+  const out = [], labels = p.labels_tags || [], x = f.x;
+  const claimText = labels.join(' ') + ' ' + f.name;
+  if (f.added.concentrate && !f.juice) out.push({t:'Sweetened with fruit concentrate or paste', d:'Fruit juice concentrate, paste or powder is sugar with the fibre taken out. Since late 2023 it legally counts as added sugar in Australia.'});
+  if (f.added.names.length >= 3) out.push({t:`Sugar listed under ${f.added.names.length} names`, d:`${cap(joinList(f.added.names))}. Splitting sugar across several names keeps each one further down the ingredient list.`});
+  if (/no-added-sugar|no-sugar-added|without-added-sugar|no added sugar/i.test(claimText)){
+    const limit = f.drink ? 7.5 : 10;
+    const why = f.added.names.length ? `it contains ${joinList(f.added.names.slice(0,3))}` : x.sugar !== null && x.sugar > limit ? `it has ${fmt(x.sugar)}g of sugar per 100${f.drink ? 'mL' : 'g'}, over the ${limit}g limit` : '';
+    if (why) out.push({t:'“No added sugar” wouldn’t pass the 2027 rule', d:`From December 2027 this claim won’t be allowed here because ${why}.`});
   }
-  parts.nutrition = nutritionPart(p);
-  const hasIngredients = !!(p.ingredients_text || p.ingredients_text_en);
-  const tags = p.additives_tags || [];
-  if (hasIngredients || tags.length){
-    const list = tags.map(classifyAdditive);
-    const lost = list.reduce((s,a) => s + a.pts, 0);
-    parts.additives = {pts:Math.max(0, 33 - lost), max:33, list,
-      label: list.length ? `${list.length} additive${list.length>1?'s':''}` : 'None found'};
-  } else {
-    parts.additives = {pts:null, max:33, list:[], label:'Unknown'};
+  if (f.isolates && (f.confectionery || hasTag(p, RE.cerealOrBar)) && x.sugar !== null && x.sugar >= 15)
+    out.push({t:'Sugary food with added protein or fibre', d:'Protein or fibre has been added to a sugary product, which makes the nutrition label look better without changing what it mostly is.'});
+  if (/whole-?grain|wholemeal/i.test(claimText)){
+    const serve = Number(p.serving_quantity) || null;
+    let pct = 0, m; const re = /(?:whole\s?grain|wholemeal|\boats)[^,(]*?\((\d+(?:\.\d+)?)\s*%\)/gi;
+    while ((m = re.exec(f.ing))) pct += Number(m[1]);
+    if (serve && pct){
+      const g = pct * serve / 100;
+      if (g < 8) out.push({t:'Less wholegrain than the claim suggests', d:`About ${fmt(g)}g of wholegrain per ${fmt(serve)}g serve. The industry code needs at least 8g per serve to say it contains wholegrain.`});
+    }
   }
-  const known = Object.values(parts).filter(x => x.pts !== null);
-  if (parts.processing.pts === null && parts.nutrition.pts === null) return {total:null, parts};
-  let total = Math.round(known.reduce((s,x)=>s+x.pts,0) / known.reduce((s,x)=>s+x.max,0) * 100);
-  // With partial data the scaling could lift an ultra-processed food into green, so hold it just below
-  if (nova === 4) total = Math.min(total, GREEN_FROM - 1);
-  return {total, parts, partial: known.length < 3};
+  const claims = labels.filter(l => CLAIM_RE.test(l)).length;
+  if (claims >= 3 && ['d','e'].includes(parts.nutrition.grade)) out.push({t:'Lots of claims, poor nutrition', d:`${claims} nutrition or “natural” claims on a product that grades ${parts.nutrition.grade.toUpperCase()} for nutrition.`});
+  if (f.sweet.any && x.sugar !== null && x.sugar <= 1) out.push({t:'Sugar-free, sweetened instead', d:`Sweetened with ${joinList([...f.sweet.intense, ...f.sweet.polyols])}, which keeps the taste for sweetness up.`});
+  return out;
 }
 
 /* ---------- Explanations ---------- */
 const NOVA_WHY = {
   1:'A whole or minimally processed food, like fresh, frozen or dried fruit and vegetables, plain milk, eggs, meat or oats. This is the best group.',
-  2:'A cooking ingredient such as oil, butter, sugar, salt or honey. Fine in small amounts when cooking, but not meant to be eaten on its own.',
+  2:'A cooking ingredient such as oil, butter, sugar, salt or honey. These aren’t meant to be eaten on their own, so they don’t get a score. Use them sparingly.',
   3:'A processed food: a whole food with a few things added, like salt, sugar or oil. Think cheese, canned fish or simple bread.',
   4:'An ultra-processed food, made mostly from industrial ingredients you wouldn’t use in a home kitchen. These are easy to overeat and linked to poorer health.'};
-function markerNames(p, g){
-  const mk = p.nova_groups_markers && p.nova_groups_markers[String(g)];
-  if (!Array.isArray(mk)) return [];
-  const out = [];
-  for (const it of mk){
-    const [type, tag] = it || [];
-    if (!tag) continue;
-    const c = tag.replace(/^[a-z]{2}:/,'');
-    const name = type === 'additives' ? (additiveName(c) || 'E' + c.slice(1)) : c.replace(/-/g,' ');
-    if (!out.includes(name)) out.push(name);
-    if (out.length >= 6) break;
-  }
-  return out;
-}
 function processingWhy(p, part){
-  if (part.pts === null) return 'There’s no ingredient list for this product in the database, so its processing level can’t be judged. The score uses the other parts only.';
-  const m = markerNames(p, part.nova);
+  if (part.cooking) return NOVA_WHY[2];
+  if (part.estimated) return 'There’s no ingredient list, so processing is estimated at half marks, and the product can’t be rated an everyday food.';
   if (part.nova === 4){
-    const n = part.markers;
-    const scale = ' Ultra-processed foods score 2 to 8 here: the fewer signs of ultra-processing, the better.';
-    if (!n) return NOVA_WHY[4] + scale;
-    const more = n > m.length ? `, plus ${n - m.length} more` : '';
-    return `${NOVA_WHY[4]}${scale} This one has ${n} sign${n>1?'s':''}: ${joinList(m)}${more}.`;
+    const m = part.markers || [];
+    const scale = ' Ultra-processed foods start at 14 of 30 with one sign of ultra-processing, or 10 with two or more.';
+    if (!m.length) return NOVA_WHY[4] + scale;
+    const shown = m.slice(0, 6), more = m.length > shown.length ? `, plus ${m.length - shown.length} more` : '';
+    return `${NOVA_WHY[4]}${scale} This one has ${m.length}: ${joinList(shown)}${more}.`;
   }
-  if (part.nova === 3 && m.length) return `${NOVA_WHY[3]} This one has added ${joinList(m)}.`;
   return NOVA_WHY[part.nova];
 }
 const GRADE_WHY = {a:'A very healthy nutrient balance.', b:'A good nutrient balance.', c:'An average nutrient balance.', d:'A poor nutrient balance.', e:'A very poor nutrient balance.'};
 const WHERE_WHY = {'better end':' It sits at the better end of its grade.', 'worse end':' It sits at the worse end of its grade.'};
 function nutritionWhy(p, part){
-  if (part.pts === null) return 'The nutrition panel is missing from the database, so nutrition can’t be judged.';
+  if (part.pts === null) return 'There’s no nutrition panel for this product, so it can’t be scored. Paste or photograph the label to fill it in.';
   const {bad, good} = nutrientNotes(p);
   let t = GRADE_WHY[part.grade] + (WHERE_WHY[part.where] || '');
   if (bad.length && good.length) t += ` It’s ${joinList(bad.map(b=>b.t))}, though it’s ${joinList(good)}.`;
   else if (bad.length) t += ` It’s ${joinList(bad.map(b=>b.t))}.`;
   else if (good.length) t += ` It’s ${joinList(good)}.`;
-  if (isBeverage(p) && part.grade !== 'a') t += ' For drinks, only water gets an A.';
-  if (part.estimated) t += p.source === 'label' ? ' Worked out from the nutrition panel in your photo.' : ' Worked out from the nutrition panel, as the database had no official grade.';
+  if (part.kind === 'drink' && part.grade !== 'a') t += ' For drinks, only water gets an A.';
+  if (part.source === 'computed' && p.source === 'label') t += ' Worked out from the nutrition panel you entered.';
   return t;
 }
 function additivesWhy(part){
-  if (part.pts === null) return 'There’s no ingredient list in the database, so additives can’t be checked.';
+  if (part.estimated) return 'There’s no ingredient list, so additives can’t be checked. Estimated at about half marks.';
   const L = part.list;
   if (!L.length) return 'No additives found in the ingredients, so full marks.';
-  const f = L.filter(a => a.kind === 'flag'), m = L.filter(a => a.kind === 'minor'), o = L.filter(a => a.kind === 'ok');
+  const by = t => L.filter(a => a.tier === t);
   const bits = [];
-  if (f.length) bits.push(`${f.length} additive${f.length>1?'s':''} with health concerns (${f.length>1?'−8 each':'−8'})`);
-  if (m.length) bits.push(`${m.length} other additive${m.length>1?'s':''} (${m.length>1?'−2 each':'−2'})`);
-  let t = bits.length ? `Lost ${33 - part.pts} points for ${joinList(bits)}.` : 'Full marks.';
-  if (o.length) t += ` ${cap(joinList(o.map(a => a.name || a.code)))} ${o.length>1 ? 'are natural or harmless, so they cost' : 'is natural or harmless, so it costs'} nothing.`;
+  [['high',4],['moderate',2],['low',1],['other',1]].forEach(([t, n]) => {
+    const c = by(t).length;
+    if (c) bits.push(`${c} ${t === 'other' ? 'other' : t + '-concern'} additive${c > 1 ? 's' : ''} (−${n}${c > 1 ? ' each' : ''})`);
+  });
+  let t = bits.length ? `Lost points for ${joinList(bits)}.` : 'Full marks.';
+  const ok = by('ok');
+  if (ok.length) t += ` ${cap(joinList(ok.map(a => a.name || a.code)))} ${ok.length > 1 ? 'are natural or harmless, so they cost' : 'is natural or harmless, so it costs'} nothing.`;
   return t;
 }
-function summaryLine(p, s){
-  if (s.total === null) return '';
-  const r = [];
-  if (s.parts.processing.nova === 4) r.push('ultra-processing');
-  nutrientNotes(p).bad.filter(b => b.short).forEach(b => r.push(b.short));
-  const f = (s.parts.additives.list || []).filter(a => a.kind === 'flag').length;
-  if (f) r.push(`${f} additive${f>1?'s':''} of concern`);
-  if (r.length) return `Held back by ${joinList(r)}.`;
-  if (s.parts.processing.nova === 1 && s.parts.additives.pts === 33) return 'A whole food with nothing added.';
-  return s.total >= GREEN_FROM ? 'Nothing major holding it back.' : '';
+// The two or three things that matter most, for the top of the result
+function headlineReasons(p, s){
+  const r = [], f = s.facts, n = s.parts.nutrition;
+  if (s.band === 'c') return ['A cooking ingredient: use it sparingly in home cooking.'];
+  if (s.band === 'n') return ['There’s no nutrition panel for this product, so it can’t be scored yet.'];
+  if (s.band === 'g'){
+    const good = nutrientNotes(p).good;
+    if (s.parts.processing.nova === 1 && s.parts.additives.pts === W.additives) r.push('A whole food with nothing added.');
+    if (good.length) r.push(cap(joinList(good.slice(0,3))) + '.');
+    if (s.parts.processing.nova === 4) r.push(s.parts.processing.adj.some(a => a.pts > 0)
+      ? 'Ultra-processed, but a type that isn’t linked to the same harms.' : 'Ultra-processed.');
+    if (!r.length) r.push(`Nutri-Score ${n.grade.toUpperCase()}.`);
+    return r.slice(0, 3);
+  }
+  s.caps.forEach(c => { if (c.max < GREEN_FROM - 1) r.push(c.why); });
+  const bad = nutrientNotes(p).bad.filter(b => b.short);
+  if (bad.length) r.push(cap(joinList(bad.map(b => b.t)) + '.'));
+  if (f.added.names.length && f.x.sugar !== null && f.x.sugar > 5) r.push(`Added sugar: ${joinList(f.added.names.slice(0,3))}.`);
+  if (s.parts.processing.nova === 4) r.push('Ultra-processed.');
+  const high = s.parts.additives.list.filter(a => a.tier === 'high');
+  if (high.length) r.push(`Contains ${joinList(high.map(a => a.name || a.code))}, an additive of high concern.`);
+  if (!r.length){
+    const good = nutrientNotes(p).good;
+    if (s.parts.processing.nova === 1 && s.parts.additives.pts === W.additives) r.push('A whole food with nothing added.');
+    if (good.length) r.push(cap(joinList(good.slice(0,3))) + '.');
+    if (n.grade && ['a','b'].includes(n.grade) && !r.length) r.push(`Nutri-Score ${n.grade.toUpperCase()}.`);
+  }
+  if (s.caps.length && s.caps[0].max === GREEN_FROM - 1 && r.length < 3) r.push(s.caps[0].why);
+  return [...new Set(r)].slice(0, 3);
 }
 
 const band = s => s === null || s === undefined ? 'n' : s >= GREEN_FROM ? 'g' : s >= 40 ? 'a' : 'r';
-const VERDICT = {g:'Everyday food', a:'Sometimes food', r:'Treat food', n:'Not enough data'};
-const COLOR = {g:'var(--green)', a:'var(--amber)', r:'var(--red)', n:'var(--muted)'};
+const VERDICT = {g:'Everyday food', a:'Sometimes food', r:'Occasionally', n:'Not enough info', c:'Cooking ingredient'};
+const COLOR = {g:'var(--green)', a:'var(--amber)', r:'var(--low)', n:'var(--muted)', c:'var(--slate)'};
 
 /* ---------- History ---------- */
 function loadHist(){ try { return JSON.parse(localStorage.getItem(HIST_KEY)) || []; } catch { return []; } }
 function saveHist(h){ try { localStorage.setItem(HIST_KEY, JSON.stringify(h.slice(0,100))); } catch {} }
 function addHist(item){ const h = loadHist().filter(x => x.code !== item.code); h.unshift({...item, v:SCORE_V}); saveHist(h); }
+const KIDS_KEY = 'pantrycheck.kidsMode';
+const kidsMode = () => { try { return localStorage.getItem(KIDS_KEY) === '1'; } catch { return false; } };
 let refreshing = false;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function refreshHistory(){
@@ -549,7 +958,7 @@ async function refreshHistory(){
       }
       const h = loadHist(), it = h.find(x => x.code === item.code);
       if (!it) continue;
-      if (p) it.score = scoreProduct(p).total;
+      if (p){ const sc = scoreProduct(p); it.score = sc.total; it.b = sc.band; }
       it.v = SCORE_V;
       saveHist(h);
       if (!$('#home').classList.contains('hidden')) renderHist();
@@ -564,15 +973,17 @@ function renderHist(){
     <li><button class="row" data-code="${esc(x.code)}">
       ${x.img ? `<img src="${esc(x.img)}" alt="" loading="lazy">` : '<span class="noimg"></span>'}
       <span class="t"><b>${esc(x.name)}</b><span>${esc(x.brand || '')}${x.brand ? ', ' : ''}${new Date(x.time).toLocaleDateString('en-AU',{day:'numeric',month:'short'})}</span></span>
-      <span class="pill ${band(x.score)}${x.v === SCORE_V ? '' : ' old'}">${x.score ?? '?'}</span>
+      <span class="pill ${x.b || band(x.score)}${x.v === SCORE_V ? '' : ' old'}">${kidsMode() ? '' : x.score ?? ((x.b || '') === 'c' ? '–' : '?')}</span>
     </button></li>`).join('')
     : '<li class="empty" style="border:2px dashed var(--line)">Nothing scanned yet. Your scans will show up here.</li>';
 }
 
 /* ---------- Views ---------- */
 function show(view){
-  ['home','loading','result','label','paste','review'].forEach(v => $('#'+v).classList.toggle('hidden', v !== view));
+  ['home','loading','result','label','paste','review','plan','today','family'].forEach(v => $('#'+v).classList.toggle('hidden', v !== view));
   $('#dock').classList.toggle('hidden', view !== 'result');
+  currentTab = Object.keys(TAB_VIEWS).find(t => TAB_VIEWS[t].includes(view)) || 'scan';
+  document.querySelectorAll('.navbar [data-tab]').forEach(b => { b.classList.toggle('on', b.dataset.tab === currentTab); b.setAttribute('aria-current', b.dataset.tab === currentTab ? 'page' : 'false'); });
   window.scrollTo(0,0);
   if (view === 'home') renderHist();
 }
@@ -605,7 +1016,7 @@ async function lookup(code){
 
 function showProduct(p){
   const s = scoreProduct(p);
-  addHist({code:p.code, name:nameOf(p), brand:brandOf(p), img:p.image_front_small_url || '', score:s.total, time:Date.now()});
+  addHist({code:p.code, name:nameOf(p), brand:brandOf(p), img:p.image_front_small_url || '', score:s.total, b:s.band, time:Date.now()});
   renderResult(p, s);
   findAlternatives(p, s);
 }
@@ -632,78 +1043,119 @@ function light(label, v, lo, hi){
   return `<div class="light ${c}"><b>${fmt(v)}g</b><span>${label}</span></div>`;
 }
 function partHTML(title, part, why){
+  const kids = kidsMode();
   const pct = part.pts === null ? 0 : part.pts / part.max * 100;
   const b = part.pts === null ? 'n' : pct >= 70 ? 'g' : pct >= 40 ? 'a' : 'r';
+  const score = part.pts === null ? (part.cooking ? 'Not scored' : 'Unknown') : kids ? '' : `${part.pts} / ${part.max}`;
   return `<div class="part">
-    <div class="top"><h3>${title}</h3><b>${part.pts === null ? 'Unknown' : `${part.pts} / ${part.max}`}</b></div>
+    <div class="top"><h3>${title}</h3><b>${score}</b></div>
     <div class="meter"><i style="width:${pct}%;background:${COLOR[b]}"></i></div>
     <p class="muted small" style="margin:0">${esc(part.label)}</p>
     <p class="why">${esc(why)}</p>
   </div>`;
+}
+const STICKER_WORD = {g:'Every<br>day', a:'Some<br>times', r:'Occa&shy;sion&shy;ally', n:'?', c:''};
+
+// For drinks and snacks: sugar in one serve against a young child's daily limit for added sugar and juice.
+// About 20g is a rough guide based on WHO advice (under 5% of energy for a 4 to 8 year old).
+function childSugarNote(p, f){
+  const serve = Number(p.serving_quantity);
+  if (!serve || f.x.sugar === null || !(f.added.names.length || f.juice)) return '';
+  if (!(f.drink || f.confectionery || f.sometimesCat || f.sugaryCereal || f.kids || hasTag(p, RE.cerealOrBar))) return '';
+  const g = f.x.sugar * serve / 100;
+  if (g < 2) return '';
+  const pct = Math.round(g / 20 * 100);
+  return `One ${fmt(serve)}${f.drink ? 'mL' : 'g'} serve has about ${fmt(g)}g of sugar: ${pct >= 100 ? 'more than' : 'about ' + pct + '% of'} the most a young child should have in a day from added sugar and juice (about 20g, a rough WHO-based guide).`;
 }
 
 let currentProduct = null;
 function renderResult(p, s){
   currentProduct = p;
   const check = checkData(p);
-  const b = band(s.total);
-  const x = nutr(p), drink = isBeverage(p), k = drink ? .5 : 1;
+  const b = s.band, kids = kidsMode(), f = s.facts;
+  const x = f.x, drink = f.drink, k = drink ? .5 : 1;
   const adds = s.parts.additives.list || [];
-  const flagged = adds.filter(a => a.kind === 'flag');
+  const concern = adds.filter(a => a.tier === 'high' || a.tier === 'moderate');
+  const reasons = headlineReasons(p, s);
+  const badges = [];
+  if (s.parts.processing.nova === 4) badges.push(['Ultra-processed', 'warn']);
+  if (b === 'c') badges.push(['Use sparingly', 'warn']);
+  if (f.added.names.length && b !== 'c') badges.push(['Added sugar', 'warn']);
+  if (f.sweet.any && b !== 'c') badges.push(['Contains sweeteners', 'warn']);
+  badges.push(s.confidence === 'complete' ? ['Complete data', 'ok'] : s.confidence === 'estimated' ? ['Partly estimated', 'warn'] : ['Missing data', 'warn']);
+  const grade = s.parts.nutrition.grade;
+  const stickerInner = b === 'c'
+    ? `<div class="num" style="font-size:3rem">${grade ? grade.toUpperCase() : '–'}</div><div class="of">Nutri-Score</div>`
+    : kids || s.total === null
+      ? `<div class="word">${STICKER_WORD[b]}</div>`
+      : `<div class="num">${s.total}</div><div class="of">out of 100</div>`;
+  const sugarNote = childSugarNote(p, f);
+  const fixLink = p.source === 'label'
+    ? `<button class="linkbtn" data-edit-label>Edit the details</button>`
+    : `<button class="linkbtn" data-paste-code="${esc(p.code)}" data-from-off>Paste or photograph the label</button>`;
   $('#result').innerHTML = `
     <button class="back" data-home>‹ Back</button>
     <div class="hero">
-      <div class="sticker pop" style="background:${COLOR[b]}">
-        <div><div class="num">${s.total ?? '?'}</div><div class="of">out of 100</div></div>
-      </div>
-      <div><div class="verdict" style="color:${COLOR[b]}">${VERDICT[b]}</div><p class="summary">${esc(summaryLine(p, s))}</p></div>
+      <div class="sticker pop" style="background:${COLOR[b]}"><div>${stickerInner}</div></div>
+      <div><div class="verdict" style="color:${COLOR[b]}">${VERDICT[b]}</div>
+        <ul class="reasons">${reasons.map(r => `<li>${esc(r)}</li>`).join('')}</ul></div>
     </div>
+    <div class="badges">${badges.map(([t, c]) => `<span class="badge ${c}">${esc(t)}</span>`).join('')}</div>
     <div class="prod">
       ${p.image_front_small_url ? `<img src="${esc(p.image_front_small_url)}" alt="">` : ''}
       <div><b>${esc(nameOf(p))}</b><span class="muted small">${esc(brandOf(p))}</span>${check.stale ? `<span class="muted small" style="display:block">Database entry last updated in ${check.stale}. Recipes can change.</span>` : ''}</div>
     </div>
-    ${check.issues.length ? `<div class="note bad"><b>These numbers look unreliable, so this score may be wrong.</b><ul style="margin:6px 0 8px;padding-left:18px">${check.issues.map(i => `<li>${esc(i)}</li>`).join('')}</ul>${p.source === 'label'
-      ? `<button class="linkbtn" data-edit-label>Check the numbers against the label</button>`
-      : `<button class="linkbtn" data-paste-code="${esc(p.code)}" data-from-off>Paste or photograph the label to fix it</button>`}</div>` : ''}
-    ${p.source === 'label' ? `<div class="note info">Scored from label photos. <button class="linkbtn" data-edit-label>Edit details</button></div>` : ''}
-    ${p.source !== 'label' && (s.partial || s.total === null) ? `<div class="note info">The database is missing some details for this product. <button class="linkbtn" data-label-code="${esc(p.code)}" data-from-off>Photograph the label to fill the gaps</button></div>` : ''}
-    ${s.parts.processing.nova === 4 && s.total >= 60 ? `<div class="note info">A better ultra-processed choice, but ultra-processed foods top out at 74, so they're never an everyday food.</div>` : ''}
-    ${s.partial && s.total !== null ? `<div class="note warn">This score is based on partial data.</div>` : ''}
+    ${check.issues.length ? `<div class="note bad"><b>These numbers look unreliable, so this score may be wrong.</b><ul style="margin:6px 0 8px;padding-left:18px">${check.issues.map(i => `<li>${esc(i)}</li>`).join('')}</ul>${fixLink}</div>` : ''}
+    ${b === 'n' ? `<div class="note warn">This product can’t be scored without its nutrition panel. ${fixLink} to fill it in.</div>` : ''}
+    ${s.confidence === 'estimated' ? `<div class="note warn">There’s no ingredient list, so processing and additives are estimated and it can’t be rated an everyday food. ${fixLink} to fill the gaps.</div>` : ''}
+    ${p.source === 'label' ? `<div class="note info">Scored from label details you added. <button class="linkbtn" data-edit-label>Edit details</button></div>` : ''}
+    ${sugarNote ? `<div class="note warn">${esc(sugarNote)}</div>` : ''}
+
+    ${s.flags.length ? `<h2>Marketing checks</h2><ul class="flags">${s.flags.map(fl => `<li><b>${esc(fl.t)}</b><span>${esc(fl.d)}</span></li>`).join('')}</ul>` : ''}
 
     <h2>Why this score</h2>
-    ${partHTML('Processing', s.parts.processing, processingWhy(p, s.parts.processing))}
     ${partHTML('Nutrition', s.parts.nutrition, nutritionWhy(p, s.parts.nutrition))}
+    ${partHTML('Processing', s.parts.processing, processingWhy(p, s.parts.processing))}
     ${partHTML('Additives', s.parts.additives, additivesWhy(s.parts.additives))}
-    ${adds.length ? `<div class="chips">${adds.map(a => `<span class="chip ${a.kind==='flag'?'flag':''}">${esc(a.code)}${a.name ? ` <small>${esc(a.name)}</small>` : ''}</span>`).join('')}</div>` : ''}
-    ${flagged.length ? `<ul class="flaglist">${flagged.map(a => `<li><b>${esc(a.code)}${a.name ? ` (${esc(a.name)})` : ''}</b>: ${esc(a.why)}</li>`).join('')}</ul>` : ''}
+    ${adds.length ? `<div class="chips">${adds.map(a => `<span class="chip t-${a.tier}">${esc(a.code)}${a.name ? ` <small>${esc(a.name)}</small>` : ''}</span>`).join('')}</div>` : ''}
+    ${concern.length ? `<ul class="flaglist">${concern.map(a => `<li><b>${esc(a.code)}${a.name ? ` (${esc(a.name)})` : ''}, ${TIER_LABEL[a.tier].toLowerCase()}:</b> ${esc(a.why)}${a.au ? ` <span class="au">In Australia: ${esc(a.au)}</span>` : ''}</li>`).join('')}</ul>` : ''}
+    ${(s.adjustments.length || s.caps.length) ? `<h3 style="margin-top:18px">Adjustments</h3><ul class="adjlist">
+      ${s.adjustments.map(a => `<li><b>${a.pts ? (a.pts > 0 ? '+' : '−') + Math.abs(a.pts) : '•'}</b><span>${esc(a.text)}</span></li>`).join('')}
+      ${s.caps.map(c => `<li><b>≤${c.max}</b><span>${esc(c.why)}${kids ? '' : ` Without this limit it would score ${s.raw}.`}</span></li>`).join('')}
+    </ul>` : ''}
 
-    <h2>Per 100${drink ? 'ml' : 'g'}</h2>
+    ${b !== 'c' ? `<h2>Per 100${drink ? 'mL' : 'g'}</h2>
     <div class="lights">
       ${light('Sugar', x.sugar, 5*k, 22.5*k)}
       ${light('Sat fat', x.sat, 1.5*k, 5*k)}
       ${light('Salt', x.salt, .3*k, 1.5*k)}
       ${light('Fat', x.fat, 3*k, 17.5*k)}
-    </div>
+    </div>` : ''}
     ${p.source === 'label'
       ? `<button class="linkbtn" data-edit-label>Doesn't match the label? Edit the details</button>`
       : `<button class="linkbtn" data-paste-code="${esc(p.code)}" data-from-off>Doesn't match the label? Paste or photograph it to correct the score</button>`}
 
     <div class="alt" id="altBox">
-      <h2>Healthier options</h2>
+      <h2>Better choices</h2>
       <p class="muted small" id="altStatus">Looking for better choices sold in Australia…</p>
       <ul class="hist" id="altList"></ul>
+      <div id="aisle"></div>
     </div>`;
   show('result');
 }
 
-/* ---------- Alternatives ---------- */
-// Categories too broad to give sensible swaps (e.g. "cereals and potatoes" would suggest flour for a breakfast cereal)
+/* ---------- Better choices ----------
+   Swaps come from the most specific category with at least 10 Australian products, must have complete data and a
+   recent database entry, and must gain at least 10 points or a whole band. A ranked "best in this aisle" list sits
+   underneath, because re-ordering choices by healthiness has worked better in trials than single swap prompts. */
 const GENERIC_CATS = new Set(['en:plant-based-foods-and-beverages','en:plant-based-foods','en:foods','en:groceries',
   'en:cereals-and-potatoes','en:cereals-and-their-products','en:fruits-and-vegetables-based-foods','en:meals',
   'en:fermented-foods','en:food-additives','en:dietary-supplements','en:farming-products','en:dried-products',
   'en:frozen-foods','en:canned-foods','en:breakfasts','en:beverages-and-beverages-preparations','en:condiments',
-  'en:animal-products','en:non-food-products','en:open-beauty-facts']);
+  'en:animal-products','en:non-food-products','en:open-beauty-facts','en:snacks','en:sweet-snacks','en:salty-snacks',
+  'en:dairies','en:beverages','en:desserts']);
 const catName = c => c.replace(/^[a-z]{2}:/,'').replace(/-/g,' ');
+const BAND_RANK = {r:0, a:1, g:2, n:-1, c:-1};
 const searchCache = new Map();
 let altToken = 0, lastAlt = null;
 
@@ -717,72 +1169,96 @@ async function searchCategory(cat, healthyOnly){
   if (r.status === 429 || r.status === 503) { const e = new Error('busy'); e.busy = true; throw e; }
   if (!r.ok) throw new Error('status ' + r.status);
   const d = await r.json();
-  const prods = d.products || [];
-  searchCache.set(key, prods);
-  return prods;
+  const res = {products: d.products || [], count: Number(d.count) || (d.products || []).length};
+  searchCache.set(key, res);
+  return res;
 }
 
 function betterBecause(a, cur){
   const r = [];
   const cmp = (k, label) => { const x = a.parts[k].pts, y = cur.parts[k].pts; if (x !== null && y !== null && x > y) r.push(label); };
-  cmp('processing', 'less processed');
   cmp('nutrition', 'better nutrition');
-  cmp('additives', 'fewer additives');
+  cmp('processing', 'less processed');
+  cmp('additives', 'fewer additives of concern');
   return cap(joinList(r));
 }
+const TWO_YEARS = 2 * 365 * 864e5;
+const altRow = (x, s, me) => `
+    <li${me ? ' class="me"' : ''}><button class="row" data-code="${esc(x.code)}">
+      ${x.image_front_small_url ? `<img src="${esc(x.image_front_small_url)}" alt="" loading="lazy">` : '<span class="noimg"></span>'}
+      <span class="t"><b>${esc(nameOf(x))}${me ? ' (this one)' : ''}</b><span>${esc(brandOf(x))}</span>${me ? '' : `<span class="why-alt">${esc(betterBecause(s, lastAlt.cur))}</span>`}</span>
+      <span class="pill ${s.band}">${kidsMode() ? '' : s.total}</span>
+    </button></li>`;
 
 async function findAlternatives(p, cur){
   const token = ++altToken;
   lastAlt = {p, cur};
-  const status = $('#altStatus'), list = $('#altList');
-  const myScore = cur.total ?? -1;
+  const status = $('#altStatus'), list = $('#altList'), aisle = $('#aisle');
+  if (cur.band === 'c'){ status.textContent = 'Cooking ingredients aren’t compared, because they’re used in small amounts.'; return; }
   const hier = (p.categories_hierarchy && p.categories_hierarchy.length ? p.categories_hierarchy : p.categories_tags) || [];
-  const cats = hier.filter(c => c.startsWith('en:') && !GENERIC_CATS.has(c)).reverse().slice(0, 4);
-  if (!cats.length){ status.textContent = 'This product has no category in the database, so there’s nothing to compare it with.'; return; }
+  const cats = [...new Set(hier)].filter(c => c.startsWith('en:') && !GENERIC_CATS.has(c)).reverse().slice(0, 4);
+  if (!cats.length){ status.textContent = 'This product has no food type in the database, so there’s nothing to compare it with.'; return; }
 
-  const seen = new Set([p.code]);
-  const found = [];
-  let errors = 0, busy = false, searched = 0;
-  for (let i = 0; i < cats.length && found.length < 6; i++){
-    const passes = i === 0 ? [true, false] : [true]; // healthy pass everywhere, plus a popular pass in the closest category
-    for (const healthy of passes){
-      try {
-        const prods = await searchCategory(cats[i], healthy);
-        searched++;
-        prods.forEach((x, idx) => {
-          if (!x.code || seen.has(x.code)) return;
-          seen.add(x.code);
-          const s = scoreProduct(x);
-          if (s.total === null || s.parts.processing.pts === null || s.parts.nutrition.pts === null) return;
-          if (s.total > myScore) found.push({x, s, cat:cats[i], depth:i, idx});
-        });
-      } catch (e) { errors++; if (e.busy) busy = true; }
-      if (token !== altToken) return; // a newer scan has started
-    }
+  // The most specific category with at least 10 Australian products
+  let primary = null, pool = [], errors = 0, busy = false;
+  for (const cat of cats){
+    try {
+      const res = await searchCategory(cat, false);
+      if (token !== altToken) return;
+      if (res.count >= 10 || cat === cats[cats.length - 1]){ primary = cat; pool = res.products.slice(); break; }
+    } catch (e) { errors++; if (e.busy) busy = true; }
   }
-  // Closest category first, then highest score, then most popular
-  found.sort((a,b) => (a.depth - b.depth) || (b.s.total - a.s.total) || (a.idx - b.idx));
-  const top = found.slice(0, 6).sort((a,b) => b.s.total - a.s.total);
-
-  if (!top.length){
-    if (!searched){
-      status.innerHTML = `${busy ? 'The food database is busy right now.' : 'Couldn’t load alternatives.'} <button class="linkbtn" id="altRetry">Try again</button>`;
-    } else if (cur.total >= GREEN_FROM){
-      status.textContent = `This is already one of the best choices among ${catName(cats[0])}.`;
-    } else {
-      status.textContent = `No higher-scoring ${catName(cats[0])} sold in Australia are in the database yet.`;
-    }
+  if (primary){
+    try { const h = await searchCategory(primary, true); pool = pool.concat(h.products); } catch (e) { errors++; if (e.busy) busy = true; }
+  }
+  if (token !== altToken) return;
+  if (!primary){
+    status.innerHTML = `${busy ? 'The food database is busy right now.' : 'Couldn’t load other products.'} <button class="linkbtn" id="altRetry">Try again</button>`;
     return;
   }
-  const cats_used = [...new Set(top.map(t => catName(t.cat)))];
-  status.textContent = `Higher-scoring ${joinList(cats_used)} sold in Australia:`;
-  list.innerHTML = top.map(({x, s}) => `
-    <li><button class="row" data-code="${esc(x.code)}">
-      ${x.image_front_small_url ? `<img src="${esc(x.image_front_small_url)}" alt="" loading="lazy">` : '<span class="noimg"></span>'}
-      <span class="t"><b>${esc(nameOf(x))}</b><span>${esc(brandOf(x))}</span><span class="why-alt">${esc(betterBecause(s, cur))}</span></span>
-      <span class="pill ${band(s.total)}">${s.total}</span>
-    </button></li>`).join('');
-  if (errors) list.insertAdjacentHTML('afterend', '<p class="muted small">Some categories couldn’t be searched, so there may be more options.</p>');
+  const seen = new Set(), ranked = [];
+  for (const x of pool){
+    if (!x.code || seen.has(x.code)) continue;
+    seen.add(x.code);
+    if (x.code === p.code) continue;
+    if (x.last_modified_t && Date.now() - x.last_modified_t * 1000 > TWO_YEARS) continue;
+    const s = scoreProduct(x);
+    if (s.total === null || s.confidence !== 'complete') continue;
+    ranked.push({x, s});
+  }
+  ranked.sort((a, b) => b.s.total - a.s.total);
+  const name = catName(primary);
+  const mine = cur.total ?? -1;
+  const swaps = (cur.total === null ? ranked.filter(r => r.s.total >= 40)
+    : ranked.filter(r => r.s.total - mine >= 10 || BAND_RANK[r.s.band] > BAND_RANK[cur.band])).slice(0, 3);
+
+  if (swaps.length){
+    status.textContent = `Better ${name} sold in Australia:`;
+    list.innerHTML = swaps.map(r => altRow(r.x, r.s)).join('');
+  } else if (!ranked.length){
+    status.textContent = `No other ${name} sold in Australia with complete details are in the database yet.`;
+  } else if (cur.total !== null && cur.total >= GREEN_FROM){
+    status.textContent = `This is already one of the best ${name} we found.`;
+  } else if (!ranked.some(r => r.s.total >= 40)){
+    status.textContent = f_tip(cur, name);
+  } else {
+    status.textContent = `No ${name} we found is clearly better (by 10 points or a whole band).`;
+  }
+  // Where this product sits, and the best in this aisle
+  if (ranked.length >= 3 && cur.total !== null){
+    const beat = Math.round(ranked.filter(r => r.s.total < cur.total).length / ranked.length * 100);
+    const top = ranked.slice(0, 10), me = {x: p, s: cur};
+    const withMe = [...top, me].sort((a, b) => b.s.total - a.s.total);
+    const where = beat === 0 ? `Scores lowest of the ${ranked.length + 1} ${name} we found.` : beat === 100 ? `Scores highest of the ${ranked.length + 1} ${name} we found.` : `Scores higher than ${beat}% of the ${ranked.length} other ${name} we found.`;
+    aisle.innerHTML = `<p class="small" style="margin-top:12px">${kidsMode() ? '' : where}</p>
+      <details class="aisle"><summary>Best in this aisle</summary><ul class="hist">${withMe.slice(0, 11).map(r => altRow(r.x, r.s, r === me)).join('')}</ul></details>`;
+  }
+  if (errors) aisle.insertAdjacentHTML('beforeend', '<p class="muted small">Some searches failed, so there may be more options.</p>');
+}
+function f_tip(cur, name){
+  return cur.facts && cur.facts.drink
+    ? `None of the ${name} we found is better than an occasional drink. Water or plain milk is an everyday drink.`
+    : `None of the ${name} we found is better than an occasional food. For an everyday swap, try a whole food like fruit, plain yoghurt or wholegrain toast.`;
 }
 
 
@@ -895,7 +1371,7 @@ function renderReview(L, code, base){
     ${f('rMarkers','Signs of ultra-processing, separated by commas',(L.ultra_processed_markers || []).join(', '),'')}
     <div class="field"><label for="rCat">Food type (used to suggest healthier options)</label>
       <input id="rCat" list="catList" autocapitalize="off" value="${esc((reviewCtx.category || '').replace(/^[a-z]{2}:/,'').replace(/-/g,' '))}" placeholder="e.g. breakfast cereals">
-      <datalist id="catList">${['breakfast cereals','muesli bars','sweet biscuits','crackers','chips and fries','yogurts','cheeses','milks','fruit juices','sodas','breads','pastas','sauces','chocolates','ice creams','frozen meals','canned soups','nuts','dried fruits','baby foods'].map(c => `<option value="${c}">`).join('')}</datalist></div>
+      <datalist id="catList">${['breakfast cereals','muesli bars','sweet biscuits','cakes','crackers','chips and fries','lollies','chocolates','yogurts','cheeses','milks','fruit juices','soft drinks','energy drinks','breads','processed meats','pastas','sauces','ice creams','frozen meals','canned soups','nuts','dried fruits','baby foods'].map(c => `<option value="${c}">`).join('')}</datalist></div>
     <div class="stack"><button class="btn btn-main" id="scoreLabel">Score it</button></div>`;
   show('review');
 }
@@ -950,7 +1426,7 @@ const UP_MARKERS = [
 // Pull every number on a line, with its unit, ignoring percentages
 function numbersIn(line){
   const out = [];
-  const re = /(\d[\d,]*(?:\.\d+)?)\s*(kj|kcal|cal|mg|ml|g)?\s*(%)?/gi;
+  const re = /(?:<\s*)?(\d[\d,]*(?:\.\d+)?)\s*(kj|kcal|cal|mcg|mg|ml|g)?\s*(%)?/gi;
   let m;
   while ((m = re.exec(line))){
     if (m[3]) continue;
@@ -958,78 +1434,168 @@ function numbersIn(line){
   }
   return out;
 }
-function parseLabelText(text){
-  const warn = [];
-  const clean = text.replace(/\u00a0/g,' ').replace(/[\u2013\u2014]/g,'-');
-  const lower = clean.toLowerCase();
-  const lines = clean.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-  const i100 = lower.search(/per\s*100\s*(g|ml)|\/\s*100\s*(g|ml)/);
-  const iServe = lower.search(/per\s*serv(e|ing)/);
-  const col = (i100 >= 0 && iServe >= 0 && iServe < i100) ? 1 : 0;
-  if (i100 < 0) warn.push('Couldn’t find a “per 100g” heading, so the first column of numbers was used — check the values.');
-  const isDrink = /per\s*100\s*ml|100ml|per\s*100\s*mL/i.test(clean);
 
-  const row = (match, units) => {
-    for (let i = 0; i < lines.length; i++){
-      if (!match(lines[i])) continue;
-      let nums = numbersIn(lines[i]).filter(n => !n.unit || units.includes(n.unit));
-      // Values sometimes sit on the lines below the label
-      for (let j = i + 1; j < Math.min(i + 4, lines.length) && nums.length < col + 1; j++){
-        if (/[a-z]{4,}/i.test(lines[j].replace(/kj|kcal|cal|mg|ml|g/gi,''))) break;
-        nums = nums.concat(numbersIn(lines[j]).filter(n => !n.unit || units.includes(n.unit)));
-      }
-      if (!nums.length) continue;
-      if (nums.length === 1 && col === 1) warn.push('Only one column of numbers was found — check they are the per 100g values.');
-      return nums[Math.min(col, nums.length - 1)];
+/* Nutrition table reader. Copes with:
+   - tables copied from a website (cells separated by tabs, or rebuilt from the copied table itself)
+   - pipe tables, or columns separated by wide spacing
+   - layouts where every cell sits on its own line
+   - "% Daily Intake" columns, which are skipped
+   - per-serve-only panels, converted using the serving size */
+const NUTRIENT_ROWS = [
+  ['energy',  l => /energy/.test(l)],
+  ['protein', l => /protein/.test(l)],
+  ['fat',     l => /\bfat/.test(l) && !/saturat|trans|mono|poly|omega/.test(l)],
+  ['sat',     l => /saturat/.test(l) && !/unsat|mono|poly/.test(l)],
+  ['carbs',   l => /carbohydrate/.test(l) && !/sugar/.test(l)],
+  ['sugars',  l => /sugar/.test(l) && !/added|free|alcohol/.test(l)],
+  ['fibre',   l => /fib(re|er)/.test(l)],
+  ['sodium',  l => /sodium/.test(l)],
+  ['salt',    l => /^[-–\s*]*salt\b/.test(l)]
+];
+const VALUE_CELL = /^(?:<|less than|lt)?\s*(\d[\d,]*(?:\.\d+)?)\s*(kj|kcal|cal|mcg|µg|mg|ml|g)?\b\s*(%)?/i;
+function cellValue(c){
+  const t = c.trim();
+  if (/^(-|–|—|n\/?a|nil|trace)$/i.test(t)) return {v: /trace|nil/i.test(t) ? 0 : null, unit:'', pct:false};
+  const m = t.match(VALUE_CELL);
+  if (!m) return null;
+  return {v: +m[1].replace(/,/g,''), unit: (m[2] || '').toLowerCase().replace('µg','mcg'), pct: !!m[3]};
+}
+const hasWords = c => /[a-z]{2,}/i.test(c.replace(/\b(kj|kcal|cal|mcg|mg|ml|g)\b/gi, '').replace(/less than|trace|nil|n\/a/gi, ''));
+
+function nutritionRows(text){
+  const lines = text.replace(/ /g,' ').replace(/[–—]/g,'-').split(/\r?\n/)
+    .map(l => l.replace(/^\s*\|/, '').replace(/\|\s*$/, '')).filter(l => l.trim() && !/^[\s|:\-]+$/.test(l));
+  const rows = [];
+  for (const line of lines){
+    let cells = /\t|\|/.test(line) ? line.split(/\t|\|/) : line.trim().split(/\s{2,}/);
+    cells = cells.map(c => c.trim());
+    const first = cells.findIndex(c => c !== '');
+    if (first < 0) continue;
+    cells = cells.slice(first);
+    while (cells.length && cells[cells.length - 1] === '') cells.pop();
+    // A single run of text like "Energy 483kJ 1610kJ": split the label from the numbers
+    if (cells.length === 1 && hasWords(cells[0]) && /\d/.test(cells[0])){
+      const m = cells[0].match(/^(.*?[a-z)\]])\s+((?:<\s*|less than\s*)?\d[\s\S]*)$/i);
+      if (m && hasWords(m[1])) cells = [m[1], ...m[2].split(/\s+(?=<?\s*\d)/)];
     }
-    return null;
+    const isLabel = hasWords(cells[0]) && !cellValue(cells[0]);
+    rows.push({label: isLabel ? cells[0] : null, cells: isLabel ? cells.slice(1) : cells, text: line});
+  }
+  return rows;
+}
+
+function parseNutrition(text){
+  const warn = [];
+  const rows = nutritionRows(text);
+  const find = key => rows.findIndex(r => r.label && NUTRIENT_ROWS.find(n => n[0] === key)[1](r.label.toLowerCase()));
+  const firstNutrient = Math.min(...NUTRIENT_ROWS.map(n => find(n[0])).filter(i => i >= 0), rows.length);
+
+  // Column headings, in order, from the lines above the first nutrient
+  const headText = rows.slice(0, firstNutrient).map(r => r.text).join('\n');
+  const cols = [];
+  // "% Daily Intake per serve" is one column, so the % patterns swallow a trailing "per serve"
+  const re = /(?:%\s*(?:daily\s*intake|r?di)\b|daily\s*intake)\*?(?:\s*(?:\(\s*)?per\s*serv(?:e|ing)\b)?|(?:per|\/)\s*100\s*(g|ml)\b|per\s*serv(?:e|ing)\b|per\s*\d+(?:\.\d+)?\s*(?:g|ml)\b/gi;
+  let m;
+  while ((m = re.exec(headText))){
+    const t = m[0].toLowerCase();
+    cols.push(/%|daily/.test(t) ? 'pct' : /100\s*(g|ml)/.test(t) ? 'p100' : 'serve');
+  }
+  const valueCols = cols.filter(c => c !== 'pct');
+  let idx = valueCols.indexOf('p100');
+  const isDrink = /(per|\/)\s*100\s*ml/i.test(text);
+  const ss = text.match(/serving\s*size\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*(g|ml)/i);
+  let factor = 1;
+  if (idx < 0 && valueCols.includes('serve')){
+    idx = valueCols.indexOf('serve');
+    if (ss){ factor = 100 / +ss[1]; warn.push(`Only per-serve values were found, so they were converted to per 100${ss[2].toLowerCase()} using the ${ss[1]}${ss[2].toLowerCase()} serving size.`); }
+    else warn.push('Only per-serve values were found and no serving size, so check these numbers against the per 100g column on the pack.');
+  }
+  let guessed = false;
+
+  // Values for a nutrient: on its own row, or (when every cell is on its own line) on the lines below
+  const valuesFor = key => {
+    const i = find(key);
+    if (i < 0) return null;
+    let cells = rows[i].cells.slice();
+    for (let j = i + 1; j < rows.length && !rows[j].label && cells.filter(Boolean).length < Math.max(valueCols.length, 1) + cols.filter(c => c === 'pct').length; j++)
+      cells = cells.concat(rows[j].cells);
+    let vals = cells.map(cellValue).filter(v => v && !v.pct);
+    if (key === 'energy'){
+      const kj = vals.filter(v => v.unit === 'kj');
+      if (kj.length) vals = kj;
+      else if (/kcal|cal/i.test(rows[i].label)) vals = vals.map(v => ({...v, unit:'cal'}));
+    }
+    if (!vals.length) return null;
+    let pick;
+    if (idx >= 0 && vals.length === valueCols.length) pick = vals[idx];
+    else if (idx >= 0 && vals.length > idx) pick = vals[idx];
+    else if (vals.length >= 2){ pick = vals[1]; guessed = true; }   // no headings: Australian panels list per serve, then per 100
+    else { pick = vals[0]; guessed = true; }
+    if (!pick || pick.v === null) return null;
+    let unit = pick.unit || (rows[i].label.match(/\((kj|kcal|cal|mg|g|ml)\)/i) || [,''])[1].toLowerCase();
+    return {v: pick.v * factor, unit};
   };
-  const g = r => { const n = r; return n ? n.v : null; };
-  const noSat = l => !/saturat/i.test(l);
-  const energyRow = row(l => /energy/i.test(l), ['kj','kcal','cal']);
-  let energy = null;
-  if (energyRow) energy = energyRow.unit === 'cal' || energyRow.unit === 'kcal' ? Math.round(energyRow.v * 4.184) : energyRow.v;
-  const sodiumRow = row(l => /sodium/i.test(l), ['mg','g']);
-  let sodium = sodiumRow ? (sodiumRow.unit === 'g' ? sodiumRow.v * 1000 : sodiumRow.v) : null;
+
+  const gram = key => { const x = valuesFor(key); return x ? +(x.unit === 'mg' ? x.v / 1000 : x.v).toFixed(2) : null; };
+  const e = valuesFor('energy');
+  const energy = e ? Math.round(/cal/.test(e.unit) ? e.v * 4.184 : e.v) : null;
+  const so = valuesFor('sodium');
+  let sodium = so ? (so.unit === 'g' ? so.v * 1000 : so.v) : null;
   if (sodium === null){
-    const saltRow = row(l => /^[-*\s]*salt\b/i.test(l), ['g','mg']);
-    if (saltRow) sodium = Math.round((saltRow.unit === 'mg' ? saltRow.v / 1000 : saltRow.v) * 400);
+    const sa = valuesFor('salt');
+    if (sa) sodium = (sa.unit === 'mg' ? sa.v / 1000 : sa.v) * 400;
   }
-  const per_100 = {
-    energy_kj: energy,
-    protein_g: g(row(l => /protein/i.test(l), ['g'])),
-    fat_total_g: g(row(l => /fat/i.test(l) && noSat(l), ['g'])),
-    fat_saturated_g: g(row(l => /saturat/i.test(l), ['g'])),
-    carbohydrate_g: g(row(l => /carbohydrate/i.test(l) && !/sugar/i.test(l), ['g'])),
-    sugars_g: g(row(l => /sugar/i.test(l), ['g'])),
-    fibre_g: g(row(l => /fib(re|er)/i.test(l), ['g'])),
-    sodium_mg: sodium === null ? null : Math.round(sodium)
+  if (guessed && !cols.length) warn.push('The table had no column headings, so the second column was taken as per 100g. Check the numbers.');
+  else if (guessed) warn.push('Some rows didn’t line up with the column headings. Check the numbers.');
+  return {
+    is_beverage: isDrink, warn,
+    per_100: {energy_kj: energy, protein_g: gram('protein'), fat_total_g: gram('fat'), fat_saturated_g: gram('sat'),
+      carbohydrate_g: gram('carbs'), sugars_g: gram('sugars'), fibre_g: gram('fibre'),
+      sodium_mg: sodium === null ? null : Math.round(sodium)}
   };
+}
 
-  // Ingredients: everything after "Ingredients" up to the next section heading
-  let ing = null;
-  const im = clean.match(/ingredients?\s*(?:list)?\s*[:\-]\s*([\s\S]+?)(?=\n\s*(?:allergens?|contains|may contain|storage|nutrition|dietary|country of origin|manufactured|packed|serving|energy|per\s*100)\b|$)/i);
-  if (im) ing = im[1].replace(/\s+/g,' ').trim();
-  else warn.push('No ingredient list was found in the text, so additives and processing couldn’t be worked out.');
-
+function parseIngredients(text){
+  let ing = text.replace(/ /g,' ').replace(/[–—]/g,'-').trim();
+  ing = ing.replace(/^\s*ingredients?\s*(?:list)?\s*[:\-]?\s*/i, '');
+  // Stop at allergen or storage information
+  ing = ing.split(/\n\s*(?:allergens?|contains|may contain|may be present|storage|store in|country of origin|made in|manufactured|packed)\b|\.\s*(?:allergens?|contains|may contain)\b/i)[0];
+  ing = ing.replace(/\s+/g,' ').trim();
+  if (!ing) return null;
   const codes = [];
-  if (ing){
-    const re = /\b(?:ins\s*)?(\d{3,4}[a-z]{0,2})\b(?!\s*%)/gi;
-    let m;
-    while ((m = re.exec(ing))){ const c = m[1].toLowerCase(); if (!codes.includes(c)) codes.push(c); }
-  }
+  const re = /\b(?:ins\s*|e\s?)?(\d{3,4}(?:[a-f]|iii|ii|iv|i|v)?)\b(?!\s*%)/gi;
+  let m;
+  while ((m = re.exec(ing))){ const c = m[1].toLowerCase(); if (!codes.includes(c)) codes.push(c); }
+  const lower = ing.toLowerCase();
   const markers = [];
-  if (ing) UP_MARKERS.forEach(([needle, name]) => { if (ing.toLowerCase().includes(needle) && !markers.includes(name)) markers.push(name); });
+  UP_MARKERS.forEach(([needle, name]) => { if (lower.includes(needle) && !markers.includes(name)) markers.push(name); });
+  const items = ing.split(/,(?![^(]*\))/).length;
+  const nova = (markers.length || codes.length) ? 4 : items <= 1 ? 1 : 3;
+  return {ingredients_text: ing, additive_codes: codes, ultra_processed_markers: markers, nova_group: nova};
+}
 
-  let nova = null;
-  if (ing){
-    const items = ing.split(/,(?![^(]*\))/).length;
-    nova = (markers.length || codes.length) ? 4 : items <= 1 ? 1 : 3;
-    warn.push('Processing was worked out from the ingredient list — check it looks right.');
-  }
-  return {product_name:null, brand:null, is_beverage:isDrink, per_100, fruit_veg_legume_percent:null,
-    ingredients_text:ing, additive_codes:codes, nova_group:nova, ultra_processed_markers:markers,
-    category:null, notes:[...new Set(warn)].join(' ')};
+// When a table is copied from a web page, rebuild it with tabs between cells so the columns survive
+function tableFromHtml(html){
+  if (!/<t[rdh][\s>]/i.test(html)) return null;
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const rows = [...doc.querySelectorAll('tr')];
+  if (!rows.length) return null;
+  return rows.map(tr => [...tr.querySelectorAll('th,td')].map(c => c.textContent.replace(/\s+/g,' ').trim()).join('\t')).join('\n');
+}
+
+const PREVIEW_ITEMS = [['energy_kj','Energy','kJ'],['sugars_g','Sugars','g'],['fat_saturated_g','Sat fat','g'],['sodium_mg','Sodium','mg'],
+  ['fat_total_g','Fat','g'],['carbohydrate_g','Carbs','g'],['protein_g','Protein','g'],['fibre_g','Fibre','g']];
+function renderNutriPreview(){
+  const box = $('#nutriPreview'), text = $('#pasteNutri').value.trim();
+  if (!text){ box.innerHTML = ''; return; }
+  const n = parseNutrition(text);
+  const found = Object.values(n.per_100).filter(v => v !== null).length;
+  box.innerHTML = `<p class="small" style="margin:0 0 6px">${found ? `Read ${found} of 8 values, per 100${n.is_beverage ? 'mL' : 'g'}:` : 'No nutrition values found yet.'}</p>
+    ${found ? `<div class="preview">${PREVIEW_ITEMS.map(([k, label, u]) => {
+      const v = n.per_100[k];
+      return `<div class="${v === null ? 'miss' : ''}"><b>${v === null ? '–' : fmt(v) + u}</b>${label}</div>`;
+    }).join('')}</div>` : ''}
+    ${n.warn.length ? `<p class="small muted" style="margin:6px 0 0">${esc(n.warn.join(' '))}</p>` : ''}`;
 }
 
 function startPaste(code, base){
@@ -1037,73 +1603,841 @@ function startPaste(code, base){
   $('#paste').innerHTML = `
     <button class="back" data-home>‹ Back</button>
     <h2 style="margin-top:14px">Paste the label details</h2>
-    <p>On the product page, copy the nutrition information and the ingredients, then paste both here. Pasting the whole section is fine.</p>
-    <div class="field"><textarea id="pasteText" rows="12" placeholder="Nutrition Information&#10;Avg Quantity per Serving   Avg Quantity per 100g&#10;Energy   483kJ   1610kJ&#10;…&#10;&#10;Ingredients: …"></textarea></div>
-    <button class="btn btn-main" id="readPaste">Read the text</button>
+    <p>Copy each section from the product page and paste it into its box.</p>
+    <div class="field"><label for="pasteNutri">Nutrition information</label>
+      <p class="muted small" style="margin:0">Copy the whole table, including the “per serve” and “per 100g” headings.</p>
+      <textarea id="pasteNutri" rows="9" spellcheck="false" placeholder="Avg Quantity per Serving    Avg Quantity per 100g&#10;Energy    483kJ    1610kJ&#10;Protein    3.6g    12.0g&#10;…"></textarea>
+      <div id="nutriPreview"></div></div>
+    <div class="field"><label for="pasteIng">Ingredients</label>
+      <textarea id="pasteIng" rows="5" placeholder="Wholegrain wheat (97%), sugar, salt, barley malt extract, vitamins…"></textarea></div>
+    <button class="btn btn-main" id="readPaste">Check and score</button>
     <div id="pasteErr" class="note bad hidden"></div>
     <div class="stack"><button class="linkbtn" data-photo-code="${esc(labelCtx.code)}">Or photograph the label instead</button></div>`;
+  const nb = $('#pasteNutri');
+  nb.addEventListener('paste', e => {
+    const html = e.clipboardData && e.clipboardData.getData('text/html');
+    const table = html && tableFromHtml(html);
+    if (!table) return;
+    e.preventDefault();
+    const {selectionStart: a, selectionEnd: b, value} = nb;
+    nb.value = value.slice(0, a) + table + value.slice(b);
+    renderNutriPreview();
+  });
+  nb.addEventListener('input', renderNutriPreview);
   show('paste');
 }
 function readPaste(){
-  const text = $('#pasteText').value.trim();
+  let nText = $('#pasteNutri').value.trim(), iText = $('#pasteIng').value.trim();
   const err = $('#pasteErr');
-  if (text.length < 20){ err.textContent = 'Paste the nutrition information and ingredients first.'; err.classList.remove('hidden'); return; }
-  const L = parseLabelText(text);
-  const filled = Object.values(L.per_100).filter(v => v !== null).length;
-  if (!filled && !L.ingredients_text){
-    err.textContent = 'Couldn’t find any nutrition values or ingredients in that text. Try copying the nutrition table and the ingredients line again.';
+  // Both sections pasted into the nutrition box: split them at "Ingredients"
+  if (!iText){
+    const at = nText.search(/(^|\n)\s*ingredients?\s*(list)?\s*[:\-]/i);
+    if (at >= 0){ iText = nText.slice(at); nText = nText.slice(0, at); }
+  }
+  if (!nText && !iText){ err.textContent = 'Paste the nutrition information, the ingredients, or both.'; err.classList.remove('hidden'); return; }
+  const n = nText ? parseNutrition(nText) : null;
+  const ing = iText ? parseIngredients(iText) : null;
+  const found = n ? Object.values(n.per_100).filter(v => v !== null).length : 0;
+  if (!found && !ing){
+    err.textContent = 'Couldn’t find any nutrition values or ingredients. Try copying the nutrition table again, including its headings.';
     err.classList.remove('hidden');
     return;
   }
   err.classList.add('hidden');
-  renderReview(L, labelCtx.code, labelCtx.base);
+  const notes = n ? n.warn.slice() : [];
+  if (!n || !found) notes.push('No nutrition values were read, so fill them in from the pack.');
+  if (ing) notes.push('Processing was worked out from the ingredient list. Check it looks right.');
+  else notes.push('No ingredients were pasted, so additives and processing couldn’t be worked out.');
+  const empty = {energy_kj:null, protein_g:null, fat_total_g:null, fat_saturated_g:null, carbohydrate_g:null, sugars_g:null, fibre_g:null, sodium_mg:null};
+  renderReview({product_name:null, brand:null, is_beverage: n ? n.is_beverage : false,
+    per_100: n ? n.per_100 : empty, fruit_veg_legume_percent:null,
+    ingredients_text: ing ? ing.ingredients_text : null, additive_codes: ing ? ing.additive_codes : [],
+    nova_group: ing ? ing.nova_group : null, ultra_processed_markers: ing ? ing.ultra_processed_markers : [],
+    category:null, notes:[...new Set(notes)].join(' ')}, labelCtx.code, labelCtx.base);
 }
 
-/* ---------- Scanner ---------- */
-let scanner = null, scanning = false, starting = false;
+/* ---------- Scanner ----------
+   Reads the camera at full resolution and decodes only the area inside the guide box, so a barcode
+   held at a distance the camera can focus at still has enough detail to read. Uses the phone's own
+   barcode reader where there is one (Android), otherwise a WebAssembly reader (iPhone). */
+const BD_URL = 'https://cdn.jsdelivr.net/npm/barcode-detector@3.2.2/dist/es/ponyfill.js';
+const RETAIL_FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e'];
+const CAM_KEY = 'pantrycheck.camera';
+let detectorPromise = null, detectorFailed = 0;
+function getDetector(){
+  if (detectorPromise) return detectorPromise;
+  detectorPromise = (async () => {
+    if ('BarcodeDetector' in window){
+      try {
+        const sup = await BarcodeDetector.getSupportedFormats();
+        const formats = RETAIL_FORMATS.filter(f => sup.includes(f));
+        if (formats.includes('ean_13')) return new BarcodeDetector({formats});
+      } catch {}
+    }
+    const m = await import(BD_URL);
+    await m.prepareZXingModule({
+      overrides: { locateFile: (path, prefix) => path.endsWith('.wasm')
+        ? `https://cdn.jsdelivr.net/npm/zxing-wasm@${m.ZXING_WASM_VERSION}/dist/reader/${path}` : prefix + path },
+      fireImmediately: true
+    });
+    return new m.BarcodeDetector({formats: RETAIL_FORMATS});
+  })();
+  detectorPromise.catch(() => { detectorPromise = null; detectorFailed = Date.now(); });
+  return detectorPromise;
+}
+
+// Reject misreads: EAN-8, EAN-13 and UPC-A carry a check digit
+function validRetailCode(code){
+  if (!/^\d{6,14}$/.test(code)) return false;
+  if (![8, 12, 13, 14].includes(code.length)) return true;   // UPC-E: no simple check here
+  const digits = code.split('').map(Number), check = digits.pop();
+  const sum = digits.reverse().reduce((s, d, i) => s + d * (i % 2 === 0 ? 3 : 1), 0);
+  return (10 - sum % 10) % 10 === check;
+}
+
+const camPref = () => { try { return JSON.parse(localStorage.getItem(CAM_KEY)) || {}; } catch { return {}; } };
+const saveCamPref = p => { try { localStorage.setItem(CAM_KEY, JSON.stringify({...camPref(), ...p})); } catch {} };
+
+let stream = null, track = null, scanning = false, starting = false, scanTimer = null;
+let cams = [], torchOn = false, zoomed = false, scanStart = 0, tickCount = 0, helpShown = false, lastFocus = 0;
+const frame = document.createElement('canvas');
+const frameCtx = frame.getContext('2d', {willReadFrequently: true});
+
+function openStream(deviceId){
+  const size = {width: {ideal: 1920}, height: {ideal: 1080}};
+  const video = deviceId ? {...size, deviceId: {exact: deviceId}} : {...size, facingMode: {ideal: 'environment'}};
+  return navigator.mediaDevices.getUserMedia({video, audio: false});
+}
+function stopStream(){
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  stream = null; track = null; torchOn = false;
+  const v = $('#camVideo'); if (v) v.srcObject = null;
+}
+async function backCameras(){
+  const all = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+  const back = all.filter(d => !/front|user|facetime|selfie/i.test(d.label));
+  return back.length ? back : all;
+}
+const caps = () => (track && track.getCapabilities ? track.getCapabilities() : {});
+const zoomRange = () => { const z = caps().zoom; return z && z.max >= 1.5 ? {off: Math.max(1, z.min || 1), on: Math.min(2, z.max)} : null; };
+
+async function attachStream(){
+  const video = $('#camVideo');
+  video.srcObject = stream;
+  await video.play().catch(() => {});
+  track = stream.getVideoTracks()[0];
+  const c = caps(), adv = {};
+  // Keep refocusing as the phone moves (Android; iPhones do this by themselves)
+  if ((c.focusMode || []).includes('continuous')) adv.focusMode = 'continuous';
+  if ((c.exposureMode || []).includes('continuous')) adv.exposureMode = 'continuous';
+  if ((c.whiteBalanceMode || []).includes('continuous')) adv.whiteBalanceMode = 'continuous';
+  if (Object.keys(adv).length) await track.applyConstraints({advanced: [adv]}).catch(() => {});
+  const z = zoomRange();
+  // Zoom in by default: the barcode stays big while the phone is far enough back to focus
+  zoomed = !!(z && camPref().zoomed !== false);
+  if (z) await track.applyConstraints({advanced: [{zoom: zoomed ? z.on : z.off}]}).catch(() => { zoomed = false; });
+  updateCamTools();
+  if (zoomed) setHint('Zoomed in: hold the phone about 25 cm away. The barcode only needs to fit in the box.');
+}
+function updateCamTools(){
+  const z = zoomRange();
+  $('#zoomBtn').classList.toggle('hidden', !z);
+  if (z){ $('#zoomBtn').textContent = zoomed ? `${+z.on.toFixed(1)}× zoom` : '1× zoom'; $('#zoomBtn').setAttribute('aria-pressed', zoomed); }
+  $('#torchBtn').classList.toggle('hidden', !caps().torch);
+  $('#torchBtn').setAttribute('aria-pressed', torchOn);
+  $('#lensBtn').classList.toggle('hidden', cams.length < 2);
+}
+// Focus on a point of the picture (0–1 across and down), then go back to continuous focus
+async function focusAt(x, y){
+  const modes = caps().focusMode || [];
+  if (!track || !modes.length) return;
+  lastFocus = Date.now();
+  const adv = {pointsOfInterest: [{x, y}]};
+  if (modes.includes('single-shot')) adv.focusMode = 'single-shot';
+  await track.applyConstraints({advanced: [adv]}).catch(() => {});
+  if (modes.includes('continuous')) setTimeout(() => { track && track.applyConstraints({advanced: [{focusMode: 'continuous'}]}).catch(() => {}); }, 1500);
+}
+function setHint(text){ $('#scanHint').textContent = text; }
+function flashStatus(text){
+  const s = $('#camStatus');
+  s.textContent = text; s.classList.remove('hidden');
+  clearTimeout(flashStatus.t); flashStatus.t = setTimeout(() => s.classList.add('hidden'), 1800);
+}
+
 async function startScan(){
   if (scanning || starting) return;
   starting = true;
   $('#camError').classList.add('hidden');
-  if (typeof Html5Qrcode === 'undefined'){ starting = false; return camError('The scanner failed to load. Check your internet connection, or type the barcode instead.'); }
-  await stopScan(true);
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    starting = false;
+    return camError('This browser can’t use the camera. Type the barcode number instead.');
+  }
+  stopStream();
   $('#scanner').classList.remove('hidden');
-  $('#reader').innerHTML = '';
-  // Let the overlay lay out before starting, so the camera view is measured at the right size
-  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-  const F = Html5QrcodeSupportedFormats;
-  scanner = new Html5Qrcode('reader', {
-    formatsToSupport:[F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E],
-    experimentalFeatures:{useBarCodeDetectorIfSupported:true}, verbose:false});
+  setHint('Hold the phone about 20 cm away, roughly a ruler’s length. The barcode only needs to fit in the box.');
+  helpShown = false;
+  getDetector().catch(() => {});   // start loading the reader while the camera opens
   try {
-    await scanner.start({facingMode:'environment'},
-      {fps:12, qrbox:(w,h) => ({width:Math.floor(w*.8), height:Math.floor(Math.min(w,h)*.35)})},
-      async text => {
-        if (!scanning) return;
+    const pref = camPref();
+    try { stream = await openStream(pref.deviceId); }
+    catch (e) {
+      if (!pref.deviceId || e.name === 'NotAllowedError') throw e;
+      saveCamPref({deviceId: null});
+      stream = await openStream(null);
+    }
+    cams = await backCameras().catch(() => []);
+    // First time on an iPhone with several rear lenses: use the combined camera, which switches
+    // to the macro lens for close-ups instead of staying blurry
+    if (isIOS && !pref.chosen && !pref.deviceId){
+      const multi = cams.find(c => /triple/i.test(c.label)) || cams.find(c => /dual wide/i.test(c.label));
+      const current = stream.getVideoTracks()[0].getSettings().deviceId;
+      if (multi && multi.deviceId !== current){
+        stopStream();
+        stream = await openStream(multi.deviceId).catch(() => openStream(null));
+      }
+    }
+    await attachStream();
+    saveCamPref({deviceId: track.getSettings().deviceId || null});
+    scanning = true; scanStart = Date.now(); tickCount = 0; lastFocus = Date.now();
+    tick();
+  } catch (e) {
+    await stopScan();
+    camError(e && e.name === 'NotAllowedError'
+      ? 'Camera access is blocked. Allow camera access for this site in your phone’s settings, or type the barcode number instead.'
+      : e && e.name === 'NotFoundError' ? 'No camera was found. Type the barcode number instead.'
+      : 'The camera couldn’t start. Close other apps using the camera and try again, or type the barcode number instead.');
+  } finally { starting = false; }
+}
+
+// The part of the camera picture under the guide box, at the camera's own resolution
+function drawRegion(video, whole){
+  const vw = video.videoWidth, vh = video.videoHeight;
+  let sx = 0, sy = 0, sw = vw, sh = vh;
+  if (!whole){
+    const R = $('#reader').getBoundingClientRect(), B = $('#scanbox').getBoundingClientRect();
+    const scale = Math.max(R.width / vw, R.height / vh);              // object-fit: cover
+    const ox = (R.width - vw * scale) / 2, oy = (R.height - vh * scale) / 2;
+    const padX = B.width * .1, padY = B.height * .25;
+    sx = Math.max(0, (B.left - R.left - padX - ox) / scale);
+    sy = Math.max(0, (B.top - R.top - padY - oy) / scale);
+    sw = Math.min(vw - sx, (B.width + padX * 2) / scale);
+    sh = Math.min(vh - sy, (B.height + padY * 2) / scale);
+  }
+  // Enlarge the guide-box area to a fixed width: the reader copes far better with thin bars that way
+  const k = whole ? Math.min(1, 1920 / sw) : 1200 / sw;
+  frame.width = Math.round(sw * k); frame.height = Math.round(sh * k);
+  frameCtx.imageSmoothingQuality = 'high';
+  frameCtx.drawImage(video, sx, sy, sw, sh, 0, 0, frame.width, frame.height);
+}
+
+async function tick(){
+  if (!scanning) return;
+  const video = $('#camVideo');
+  try {
+    if (video.readyState >= 2 && video.videoWidth){
+      if (detectorFailed && Date.now() - detectorFailed < 3000) throw new Error('reader');
+      const det = await getDetector();
+      drawRegion(video, ++tickCount % 4 === 0);   // every 4th try, look at the whole picture
+      const codes = await det.detect(frame);
+      const hit = codes.map(c => c.rawValue).find(validRetailCode);
+      if (hit && scanning){
         scanning = false;
         navigator.vibrate && navigator.vibrate(60);
         await stopScan();
-        lookup(text);
-      }, () => {});
-    scanning = true;
-  } catch (e) {
-    await stopScan(true);
-    camError('Camera access was blocked or unavailable. Allow camera access for this site in your browser settings, or type the barcode below the button.');
-  } finally { starting = false; }
-}
-async function stopScan(keepQuiet){
-  scanning = false;
-  try {
-    if (scanner){
-      if (scanner.isScanning) await scanner.stop();
-      await scanner.clear();
+        return lookup(hit);
+      }
     }
-  } catch {}
-  scanner = null;
-  $('#reader').innerHTML = '';
-  if (!keepQuiet) $('#scanner').classList.add('hidden');
+  } catch (e) {
+    if (detectorFailed) setHint('The barcode reader couldn’t load. Check your internet connection, or cancel and type the number.');
+  }
+  // Nothing read yet: nudge the camera to refocus on the guide box every few seconds (phones that allow it)
+  if ((caps().focusMode || []).includes('single-shot') && Date.now() - scanStart > 2500 && Date.now() - lastFocus > 3000) focusAt(.5, .5);
+  if (!helpShown && Date.now() - scanStart > 7000){
+    helpShown = true;
+    const extra = [];
+    if (!$('#lensBtn').classList.contains('hidden')) extra.push('try Switch camera');
+    if (!$('#zoomBtn').classList.contains('hidden') && !zoomed) extra.push('try zoom and hold further back');
+    setHint(`Not reading? Move back until the barcode is sharp${caps().focusMode ? ', or tap the picture to refocus' : ''}.${extra.length ? ' You can also ' + joinList(extra) + '.' : ''}`);
+  }
+  scanTimer = setTimeout(tick, 80);
+}
+
+async function stopScan(){
+  scanning = false;
+  clearTimeout(scanTimer);
+  stopStream();
+  $('#scanner').classList.add('hidden');
 }
 function camError(msg){ const e = $('#camError'); e.textContent = msg; e.classList.remove('hidden'); }
+
+// Tap the picture to refocus on that spot (phones that allow it)
+$('#reader').addEventListener('click', async e => {
+  if (!track) return;
+  const R = $('#reader').getBoundingClientRect();
+  const ring = $('#focusRing');
+  ring.style.left = (e.clientX - R.left) + 'px'; ring.style.top = (e.clientY - R.top) + 'px';
+  ring.classList.remove('hidden'); ring.style.animation = 'none'; void ring.offsetWidth; ring.style.animation = '';
+  const modes = caps().focusMode || [];
+  if (!modes.length) return;
+  const video = $('#camVideo'), vw = video.videoWidth, vh = video.videoHeight;
+  const scale = Math.max(R.width / vw, R.height / vh);
+  const x = Math.min(1, Math.max(0, ((e.clientX - R.left) - (R.width - vw * scale) / 2) / scale / vw));
+  const y = Math.min(1, Math.max(0, ((e.clientY - R.top) - (R.height - vh * scale) / 2) / scale / vh));
+  focusAt(x, y);
+});
+$('#zoomBtn').onclick = async () => {
+  const z = zoomRange(); if (!z || !track) return;
+  zoomed = !zoomed;
+  await track.applyConstraints({advanced: [{zoom: zoomed ? z.on : z.off}]}).catch(() => { zoomed = !zoomed; });
+  saveCamPref({zoomed});
+  updateCamTools();
+  if (zoomed) setHint('Zoomed in: hold the phone a little further back, about 25 cm.');
+};
+$('#torchBtn').onclick = async () => {
+  if (!track) return;
+  torchOn = !torchOn;
+  await track.applyConstraints({advanced: [{torch: torchOn}]}).catch(() => { torchOn = !torchOn; });
+  updateCamTools();
+};
+$('#lensBtn').onclick = async () => {
+  if (cams.length < 2 || !track) return;
+  const current = track.getSettings().deviceId;
+  const i = cams.findIndex(c => c.deviceId === current);
+  const next = cams[(i + 1) % cams.length];
+  const wasScanning = scanning;
+  scanning = false; clearTimeout(scanTimer);
+  stopStream();
+  try {
+    stream = await openStream(next.deviceId);
+    await attachStream();
+    saveCamPref({deviceId: next.deviceId, chosen: true});
+    flashStatus(next.label || `Camera ${(i + 1) % cams.length + 1} of ${cams.length}`);
+  } catch {
+    stream = await openStream(null).catch(() => null);
+    if (stream) await attachStream(); else { await stopScan(); return camError('The camera couldn’t start. Try again.'); }
+  }
+  if (wasScanning){ scanning = true; scanStart = Date.now(); tick(); }
+};
+// Let go of the camera if the app is put in the background
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && (scanning || stream)) stopScan(); });
+
+/* ---------- Family meal planner ----------
+   Daily targets are the Australian Dietary Guidelines' recommended serves from the five food groups (Eat for Health,
+   NHMRC 2013). Kids are planned by serves, never by kilojoules. Adults can also see an estimated kJ need. */
+const FG = [
+  {k:'v', name:'Vegetables & legumes', short:'Veg', icon:'🥦'},
+  {k:'f', name:'Fruit', short:'Fruit', icon:'🍎'},
+  {k:'g', name:'Grains', short:'Grains', icon:'🍞'},
+  {k:'p', name:'Meat, fish, eggs, legumes & nuts', short:'Protein', icon:'🥚'},
+  {k:'d', name:'Milk, yoghurt & cheese', short:'Dairy', icon:'🥛'},
+];
+// [min age, max age, sex, veg, fruit, grains, protein, dairy]
+const SERVES = [
+  [2,3,'any',2.5,1,4,1,1.5],
+  [4,8,'f',4.5,1.5,4,1.5,1.5],[4,8,'m',4.5,1.5,4,1.5,2],
+  [9,11,'f',5,2,4,2.5,3],[9,11,'m',5,2,5,2.5,2.5],
+  [12,13,'f',5,2,5,2.5,3.5],[12,13,'m',5.5,2,6,2.5,3.5],
+  [14,18,'f',5,2,7,2.5,3.5],[14,18,'m',5.5,2,7,2.5,3.5],
+  [19,50,'f',5,2,6,2.5,2.5],[19,50,'m',6,2,6,3,2.5],
+  [51,70,'f',5,2,4,2,4],[51,70,'m',5.5,2,6,2.5,2.5],
+  [71,120,'f',5,2,3,2,4],[71,120,'m',5,2,4.5,2.5,3.5],
+];
+const REF_TOTAL = 18;   // a woman aged 19–50: the "adult portion" every meal in the library is sized for
+function targetsFor(m){
+  const a = Number(m.age);
+  const row = SERVES.find(r => a >= r[0] && a <= r[1] && (r[2] === 'any' || r[2] === m.sex));
+  if (!row) return null;
+  return {v:row[3], f:row[4], g:row[5], p:row[6], d:row[7]};
+}
+const portionOf = t => t ? Math.round((t.v + t.f + t.g + t.p + t.d) / REF_TOTAL * 20) / 20 : 1;
+const portionWords = pf => pf >= 1.15 ? 'a bit more than an adult serve' : pf >= .9 ? 'an adult serve' : pf >= .7 ? 'about ¾ of an adult serve' : pf >= .55 ? 'about ⅔ of an adult serve' : 'about half an adult serve';
+// Water from drinks, in 250 mL cups (Australian adequate intakes for fluids, rounded)
+function waterCups(m){
+  const a = Number(m.age);
+  if (a <= 3) return 4; if (a <= 8) return 5; if (a <= 13) return 6;
+  if (a <= 18) return m.sex === 'm' ? 8 : 6;
+  return m.sex === 'm' ? 10 : 8;
+}
+// Adults only: Schofield equations (as used for Australian energy requirements) × activity level
+const ACTIVITY = {1.4:'Mostly sitting', 1.6:'Lightly active', 1.8:'Active', 2.0:'Very active'};
+function kjEstimate(m){
+  const a = Number(m.age), w = Number(m.weight);
+  if (a < 19 || !w) return null;
+  const male = m.sex === 'm';
+  const bmr = a < 30 ? (male ? 0.063*w + 2.896 : 0.062*w + 2.036)
+            : a <= 60 ? (male ? 0.048*w + 3.653 : 0.034*w + 3.538)
+            : (male ? 0.049*w + 2.459 : 0.038*w + 2.755);
+  return Math.round(bmr * (Number(m.activity) || 1.6) * 1000 / 100) * 100;
+}
+
+/* Meals and snacks. "s" is serves in one adult portion; ingredients are [name, aisle, amount per adult portion, unit].
+   lb: packs well for school (cold, no reheating). crunch: a fruit or veg snack for Crunch & Sip. */
+const AISLES = ['Fruit & veg','Bakery','Meat & seafood','Dairy & eggs','Pantry','Frozen'];
+const FV = 'Fruit & veg', BK = 'Bakery', MS = 'Meat & seafood', DE = 'Dairy & eggs', PA = 'Pantry', FZ = 'Frozen';
+const MEALS = [
+  // Breakfasts
+  {id:'b1', slot:'breakfast', name:'Porridge with banana and milk', veg:1, s:{g:1.5,d:1,f:.5}, ing:[['Rolled oats',PA,50,'g'],['Milk',DE,250,'mL'],['Bananas',FV,.5,'']], tip:'Cook the oats in milk for creamier porridge.'},
+  {id:'b2', slot:'breakfast', name:'Wheat biscuits with milk and berries', veg:1, s:{g:1.5,d:1,f:.5}, ing:[['Wheat biscuits (no added sugar)',PA,3,''],['Milk',DE,250,'mL'],['Frozen berries',FZ,75,'g']]},
+  {id:'b3', slot:'breakfast', name:'Eggs on wholegrain toast with tomato', veg:1, s:{g:2,p:1,v:.5}, ing:[['Eggs',DE,2,''],['Wholegrain bread',BK,2,'slice'],['Tomatoes',FV,.5,'']]},
+  {id:'b4', slot:'breakfast', name:'Yoghurt with natural muesli and fruit', veg:1, nuts:1, s:{d:1,g:1,f:1}, ing:[['Plain yoghurt',DE,200,'g'],['Natural muesli',PA,30,'g'],['Apples',FV,1,'']], tip:'Plain yoghurt plus fruit beats flavoured yoghurt on sugar.'},
+  {id:'b5', slot:'breakfast', name:'Peanut butter toast and a banana', veg:1, nuts:1, s:{g:2,p:1,f:1}, ing:[['Wholegrain bread',BK,2,'slice'],['Peanut butter (no added sugar)',PA,30,'g'],['Bananas',FV,1,'']]},
+  {id:'b6', slot:'breakfast', name:'Baked beans on wholegrain toast', veg:1, s:{g:2,v:1,p:.5}, ing:[['Baked beans (salt-reduced), 420g tin',PA,.5,'tin'],['Wholegrain bread',BK,2,'slice']]},
+  {id:'b7', slot:'breakfast', name:'Banana and berry smoothie with toast', veg:1, s:{d:1,f:1,g:1}, ing:[['Milk',DE,250,'mL'],['Bananas',FV,.5,''],['Frozen berries',FZ,50,'g'],['Rolled oats',PA,15,'g'],['Wholegrain bread',BK,1,'slice']]},
+  {id:'b8', slot:'breakfast', name:'Cheese and tomato toastie', veg:1, s:{g:2,d:1,v:.5}, ing:[['Wholegrain bread',BK,2,'slice'],['Cheese',DE,40,'g'],['Tomatoes',FV,.5,'']]},
+  {id:'b9', slot:'breakfast', name:'Scrambled eggs with spinach on toast', veg:1, s:{g:2,p:1,v:.5}, ing:[['Eggs',DE,2,''],['Baby spinach',FV,40,'g'],['Milk',DE,30,'mL'],['Wholegrain bread',BK,2,'slice']]},
+  {id:'b10', slot:'breakfast', name:'Wholemeal banana pancakes with yoghurt and berries', veg:1, weekend:1, s:{g:1.5,d:.75,f:1,p:.25}, ing:[['Wholemeal flour',PA,50,'g'],['Eggs',DE,.5,''],['Milk',DE,100,'mL'],['Bananas',FV,.5,''],['Plain yoghurt',DE,100,'g'],['Frozen berries',FZ,75,'g']], tip:'Mashed banana sweetens the batter, so no sugar is needed.'},
+  // Lunches
+  {id:'l1', slot:'lunch', lb:1, name:'Chicken, cheese and salad wrap', s:{g:1.5,p:1,v:.75,d:.5}, ing:[['Wholemeal wraps',BK,1,''],['Cooked chicken',MS,80,'g'],['Cheese',DE,20,'g'],['Lettuce',FV,20,'g'],['Carrots',FV,.5,'']]},
+  {id:'l2', slot:'lunch', lb:1, veg:1, name:'Egg and lettuce sandwich', s:{g:2,p:1,v:.5}, ing:[['Wholegrain bread',BK,2,'slice'],['Eggs',DE,2,''],['Lettuce',FV,20,'g'],['Cucumbers',FV,.25,'']]},
+  {id:'l3', slot:'lunch', lb:1, name:'Tuna, corn and brown rice salad', s:{g:1.5,p:1,v:1}, ing:[['Brown rice',PA,50,'g'],['Tuna in springwater, 95g tin',PA,1,'tin'],['Corn kernels',FZ,40,'g'],['Cucumbers',FV,.25,''],['Capsicum',FV,.25,'']]},
+  {id:'l4', slot:'lunch', lb:1, veg:1, name:'Cheese, tomato and cucumber sandwich', s:{g:2,d:1,v:.5}, ing:[['Wholegrain bread',BK,2,'slice'],['Cheese',DE,40,'g'],['Tomatoes',FV,.5,''],['Cucumbers',FV,.25,'']]},
+  {id:'l5', slot:'lunch', lb:1, veg:1, name:'Pasta salad with chickpeas, capsicum and feta', s:{g:2,p:.5,v:1,d:.5}, ing:[['Wholemeal pasta',PA,60,'g'],['Chickpeas, 400g tin',PA,.25,'tin'],['Capsicum',FV,.25,''],['Cherry tomatoes',FV,50,'g'],['Feta',DE,20,'g']]},
+  {id:'l6', slot:'lunch', lb:1, name:'Tuna and cucumber sushi rolls', s:{g:1.5,p:.5,v:.5}, ing:[['Sushi rice',PA,50,'g'],['Nori sheets',PA,2,''],['Tuna in springwater, 95g tin',PA,.5,'tin'],['Cucumbers',FV,.25,''],['Avocados',FV,.25,'']]},
+  {id:'l7', slot:'lunch', lb:1, name:'Chicken, hummus and salad pita', s:{g:1.5,p:1,v:1}, ing:[['Wholemeal pita',BK,1,''],['Hummus',DE,40,'g'],['Cooked chicken',MS,60,'g'],['Lettuce',FV,20,'g'],['Tomatoes',FV,.5,''],['Cucumbers',FV,.25,'']]},
+  {id:'l8', slot:'lunch', lb:1, veg:1, name:'Zucchini and corn fritters with yoghurt dip', s:{v:1.5,g:1,p:.5,d:.5}, ing:[['Zucchini',FV,.5,''],['Corn kernels',FZ,40,'g'],['Eggs',DE,1,''],['Wholemeal flour',PA,30,'g'],['Cheese',DE,15,'g'],['Plain yoghurt',DE,50,'g']], tip:'Make a batch on Sunday; they keep 3 days in the fridge.'},
+  {id:'l9', slot:'lunch', lb:1, veg:1, name:'Mini veggie frittatas with wholegrain crackers', s:{p:1,v:.75,d:.5,g:.75}, ing:[['Eggs',DE,2,''],['Baby spinach',FV,30,'g'],['Capsicum',FV,.25,''],['Cheese',DE,20,'g'],['Wholegrain crackers',PA,25,'g']], tip:'Bake in a muffin tray and freeze extras.'},
+  {id:'l10', slot:'lunch', veg:1, name:'Lentil and vegetable soup with toast', s:{v:2,p:.5,g:2}, ing:[['Red lentils',PA,40,'g'],['Carrots',FV,.5,''],['Celery',FV,1,''],['Diced tomatoes, 400g tin',PA,.25,'tin'],['Onions',FV,.25,''],['Wholegrain bread',BK,2,'slice']]},
+  {id:'l11', slot:'lunch', name:'Roast pumpkin, chicken and quinoa bowl', s:{p:1,v:2.5,g:1}, ing:[['Cooked chicken',MS,80,'g'],['Pumpkin',FV,100,'g'],['Baby spinach',FV,40,'g'],['Cherry tomatoes',FV,50,'g'],['Quinoa',PA,30,'g']]},
+  // Dinners
+  {id:'d1', slot:'dinner', name:'Chicken and vegetable stir-fry with brown rice', s:{p:1,v:2.5,g:2}, ing:[['Chicken breast',MS,100,'g'],['Broccoli',FV,80,'g'],['Capsicum',FV,.25,''],['Carrots',FV,.5,''],['Snow peas',FV,40,'g'],['Brown rice',PA,60,'g'],['Salt-reduced soy sauce',PA,10,'mL']]},
+  {id:'d2', slot:'dinner', name:'Spaghetti bolognese with hidden veg and a side salad', s:{p:1,v:2.5,g:2}, ing:[['Lean beef mince',MS,100,'g'],['Onions',FV,.25,''],['Carrots',FV,.5,''],['Zucchini',FV,.5,''],['Diced tomatoes, 400g tin',PA,.33,'tin'],['Wholemeal spaghetti',PA,60,'g'],['Lettuce',FV,40,'g'],['Cucumbers',FV,.25,'']], tip:'Grate the carrot and zucchini so they melt into the sauce.'},
+  {id:'d3', slot:'dinner', name:'Baked salmon with potato wedges, broccoli and corn', s:{p:1,v:3}, ing:[['Salmon fillets',MS,120,'g'],['Potatoes',FV,.75,''],['Broccoli',FV,80,'g'],['Corn cobs',FV,.5,'']]},
+  {id:'d4', slot:'dinner', name:'Beef and bean tacos with salad and cheese', s:{p:1,v:1.5,g:1.5,d:.5}, ing:[['Lean beef mince',MS,70,'g'],['Kidney beans, 400g tin',PA,.2,'tin'],['Wholemeal tortillas',BK,2,''],['Lettuce',FV,30,'g'],['Tomatoes',FV,.5,''],['Cheese',DE,20,'g'],['Plain yoghurt',DE,30,'g']], tip:'Plain yoghurt works in place of sour cream. Use your own spices instead of a salty taco kit.'},
+  {id:'d5', slot:'dinner', name:'Chicken souvlaki wraps with tzatziki and salad', s:{p:1,g:1.5,v:1,d:.3}, ing:[['Chicken thighs',MS,100,'g'],['Wholemeal wraps',BK,1,''],['Plain yoghurt',DE,60,'g'],['Cucumbers',FV,.25,''],['Tomatoes',FV,.5,''],['Lettuce',FV,30,'g']]},
+  {id:'d6', slot:'dinner', veg:1, name:'Chickpea and vegetable curry with rice', s:{p:1,v:2.5,g:1.5}, ing:[['Chickpeas, 400g tin',PA,.5,'tin'],['Sweet potatoes',FV,100,'g'],['Baby spinach',FV,40,'g'],['Diced tomatoes, 400g tin',PA,.25,'tin'],['Light coconut milk',PA,60,'mL'],['Onions',FV,.25,''],['Brown rice',PA,50,'g']]},
+  {id:'d7', slot:'dinner', veg:1, name:'Wrap pizzas with veg and cheese, plus salad', s:{g:2,d:1,v:2}, ing:[['Wholemeal wraps',BK,1.5,''],['Tomato paste',PA,20,'g'],['Mozzarella',DE,40,'g'],['Capsicum',FV,.25,''],['Mushrooms',FV,40,'g'],['Baby spinach',FV,20,'g'],['Lettuce',FV,40,'g'],['Cucumbers',FV,.25,'']], tip:'Let the kids build their own.'},
+  {id:'d8', slot:'dinner', name:'Roast chicken tray bake with pumpkin, potato and greens', s:{p:1,v:3.5}, ing:[['Chicken drumsticks',MS,150,'g'],['Pumpkin',FV,100,'g'],['Potatoes',FV,.5,''],['Carrots',FV,.5,''],['Green beans',FV,60,'g']]},
+  {id:'d9', slot:'dinner', name:'Crumbed fish with sweet potato chips and salad', s:{p:1,v:3,g:.5}, ing:[['White fish fillets',MS,120,'g'],['Wholemeal breadcrumbs',PA,15,'g'],['Eggs',DE,.25,''],['Sweet potatoes',FV,120,'g'],['Lettuce',FV,40,'g'],['Tomatoes',FV,.5,''],['Cucumbers',FV,.25,'']]},
+  {id:'d10', slot:'dinner', name:'Beef and veg rissoles with mash and peas', s:{p:1,v:3,g:.25}, ing:[['Lean beef mince',MS,100,'g'],['Carrots',FV,.25,''],['Zucchini',FV,.25,''],['Rolled oats',PA,10,'g'],['Eggs',DE,.25,''],['Potatoes',FV,1,''],['Milk',DE,30,'mL'],['Frozen peas',FZ,75,'g']]},
+  {id:'d11', slot:'dinner', veg:1, name:'Lentil shepherd’s pie', s:{p:1,v:3,d:.3}, ing:[['Brown lentils, 400g tin',PA,.5,'tin'],['Onions',FV,.25,''],['Carrots',FV,.5,''],['Frozen peas',FZ,40,'g'],['Diced tomatoes, 400g tin',PA,.25,'tin'],['Potatoes',FV,1,''],['Milk',DE,30,'mL'],['Cheese',DE,15,'g']]},
+  {id:'d12', slot:'dinner', veg:1, name:'Egg fried rice with veg and edamame', s:{g:2,p:1,v:1.5}, ing:[['Brown rice',PA,60,'g'],['Eggs',DE,1.5,''],['Frozen mixed vegetables',FZ,100,'g'],['Frozen edamame',FZ,40,'g'],['Salt-reduced soy sauce',PA,10,'mL']], tip:'Day-old rice fries best.'},
+  {id:'d13', slot:'dinner', veg:1, name:'Tofu and vegetable noodle stir-fry', s:{p:.75,g:1.5,v:2}, ing:[['Firm tofu',FV,120,'g'],['Wholemeal noodles',PA,75,'g'],['Bok choy',FV,60,'g'],['Capsicum',FV,.25,''],['Broccoli',FV,50,'g'],['Salt-reduced soy sauce',PA,10,'mL']]},
+  {id:'d14', slot:'dinner', veg:1, name:'Minestrone soup with wholegrain bread', s:{v:2.5,p:.5,g:1.5}, ing:[['Cannellini beans, 400g tin',PA,.25,'tin'],['Carrots',FV,.5,''],['Celery',FV,1,''],['Zucchini',FV,.25,''],['Diced tomatoes, 400g tin',PA,.33,'tin'],['Small pasta',PA,25,'g'],['Wholegrain bread',BK,1,'slice'],['Parmesan',DE,5,'g']]},
+  // Snacks
+  {id:'s1', slot:'snack', lb:1, veg:1, name:'Apple slices and cheese cubes', s:{f:1,d:.5}, ing:[['Apples',FV,1,''],['Cheese',DE,20,'g']]},
+  {id:'s2', slot:'snack', lb:1, crunch:1, veg:1, name:'Veggie sticks with hummus', s:{v:1,p:.25}, ing:[['Carrots',FV,.5,''],['Cucumbers',FV,.25,''],['Capsicum',FV,.25,''],['Hummus',DE,30,'g']]},
+  {id:'s3', slot:'snack', lb:1, veg:1, name:'Plain yoghurt with berries', s:{d:.75,f:.3}, ing:[['Plain yoghurt',DE,150,'g'],['Frozen berries',FZ,50,'g']], tip:'Pack with an ice brick.'},
+  {id:'s4', slot:'snack', lb:1, crunch:1, veg:1, name:'A banana', s:{f:1}, ing:[['Bananas',FV,1,'']]},
+  {id:'s5', slot:'snack', lb:1, crunch:1, veg:1, name:'Mandarins', s:{f:1}, ing:[['Mandarins',FV,2,'']]},
+  {id:'s6', slot:'snack', lb:1, veg:1, name:'Wholegrain crackers and cheese', s:{g:.75,d:.5}, ing:[['Wholegrain crackers',PA,25,'g'],['Cheese',DE,20,'g']]},
+  {id:'s7', slot:'snack', lb:1, veg:1, name:'Air-popped popcorn', s:{g:1}, ing:[['Popcorn kernels',PA,20,'g']]},
+  {id:'s8', slot:'snack', lb:1, veg:1, name:'A boiled egg', s:{p:.5}, ing:[['Eggs',DE,1,'']]},
+  {id:'s9', slot:'snack', veg:1, nuts:1, name:'A handful of unsalted nuts', s:{p:1}, ing:[['Unsalted mixed nuts',PA,30,'g']]},
+  {id:'s10', slot:'snack', lb:1, crunch:1, veg:1, name:'Grapes and strawberries', s:{f:1}, ing:[['Grapes',FV,100,'g'],['Strawberries',FV,50,'g']]},
+  {id:'s11', slot:'snack', lb:1, crunch:1, veg:1, name:'Cherry tomatoes and cheese', s:{v:1,d:.5}, ing:[['Cherry tomatoes',FV,75,'g'],['Cheese',DE,20,'g']]},
+  {id:'s12', slot:'snack', veg:1, name:'A glass of milk', s:{d:1}, ing:[['Milk',DE,250,'mL']]},
+  {id:'s13', slot:'snack', veg:1, name:'Rice cakes with ricotta and tomato', s:{g:.5,d:.3,v:.25}, ing:[['Rice cakes',PA,2,''],['Ricotta',DE,40,'g'],['Tomatoes',FV,.25,'']]},
+  {id:'s14', slot:'snack', lb:1, veg:1, name:'Roasted chickpeas', s:{p:.5}, ing:[['Chickpeas, 400g tin',PA,.15,'tin']]},
+  {id:'s15', slot:'snack', lb:1, crunch:1, veg:1, name:'A pear or an apple', s:{f:1}, ing:[['Pears',FV,1,'']]},
+  {id:'s16', slot:'snack', lb:1, veg:1, name:'Banana oat bites', s:{g:.5,f:.5}, ing:[['Rolled oats',PA,20,'g'],['Bananas',FV,.5,''],['Sultanas',PA,10,'g']], tip:'Mash banana with oats and a few sultanas, then bake for 15 minutes. No added sugar.'},
+  {id:'s17', slot:'snack', lb:1, crunch:1, veg:1, name:'Snow peas and capsicum strips', s:{v:1}, ing:[['Snow peas',FV,40,'g'],['Capsicum',FV,.25,'']]},
+];
+// Simple extras the planner adds to a meal or snack when a food group is still short for the day
+const EXTRAS = [
+  {id:'x1', slot:'extra', name:'a glass of milk', s:{d:1}, at:['breakfast','after'], ing:[['Milk',DE,250,'mL']]},
+  {id:'x2', slot:'extra', name:'a side of steamed greens', s:{v:1}, at:['dinner'], ing:[['Broccoli',FV,40,'g'],['Green beans',FV,40,'g']]},
+  {id:'x3', slot:'extra', name:'a side salad', s:{v:1}, at:['dinner','lunch'], ing:[['Lettuce',FV,40,'g'],['Cucumbers',FV,.25,''],['Cherry tomatoes',FV,30,'g']]},
+  {id:'x4', slot:'extra', lb:1, name:'a piece of fruit', s:{f:1}, at:['recess','morning','lunch','breakfast'], ing:[['Seasonal fruit',FV,1,'']]},
+  {id:'x5', slot:'extra', name:'a slice of wholegrain toast', s:{g:1}, at:['breakfast'], ing:[['Wholegrain bread',BK,1,'slice']]},
+  {id:'x6', slot:'extra', lb:1, name:'a tub of plain yoghurt', s:{d:.75}, at:['lunch','after','dinner'], ing:[['Plain yoghurt',DE,150,'g']]},
+  {id:'x7', slot:'extra', lb:1, name:'veggie sticks', s:{v:1}, at:['lunch','after'], ing:[['Carrots',FV,.5,''],['Cucumbers',FV,.25,'']]},
+  {id:'x8', slot:'extra', lb:1, name:'a boiled egg', s:{p:.5}, at:['lunch','breakfast'], ing:[['Eggs',DE,1,'']]},
+];
+const MEAL = Object.fromEntries([...MEALS, ...EXTRAS].map(m => [m.id, m]));
+const SLOT_NAMES = {breakfast:'Breakfast', crunch:'Crunch & Sip', recess:'Recess', morning:'Morning tea', lunch:'Lunch', after:'Afternoon tea', dinner:'Dinner'};
+const SCHOOL_SLOTS = ['breakfast','crunch','recess','lunch','after','dinner'];
+const HOME_SLOTS = ['breakfast','morning','lunch','after','dinner'];
+const TOPUP = {v:'add a side salad or extra veg at dinner', f:'add a piece of fruit', g:'add a slice of wholegrain toast', p:'add an egg, some legumes or a handful of nuts', d:'add a glass of milk or a tub of plain yoghurt'};
+
+/* Storage */
+const FAM_KEY = 'pantrycheck.family.v1', PLAN_KEY = 'pantrycheck.plan.v1', TRACK_KEY = 'pantrycheck.track.v1', SHOP_KEY = 'pantrycheck.shop.v1';
+const readJSON = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
+const writeJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+const famDefault = () => ({members: [], schoolDays: [1,2,3,4,5], nutFreeLunch: true, noNuts: false, vegetarian: false, reward: ''});
+const family = () => ({...famDefault(), ...readJSON(FAM_KEY, {})});
+const saveFamily = f => writeJSON(FAM_KEY, f);
+const ymd = d => { const x = new Date(d); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0, 10); };
+const today = () => ymd(new Date());
+function mondayOf(d){ const x = new Date(d); x.setHours(12, 0, 0, 0); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return x; }
+const DAY_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const dayLabel = iso => { const d = new Date(iso + 'T12:00:00'); return `${DAY_SHORT[d.getDay()]} ${d.getDate()}`; };
+
+/* Who's eating: the family, or one adult if nobody's been added yet */
+function eaters(){
+  const ms = family().members.filter(m => targetsFor(m));
+  return ms.length ? ms : [{id:'_', name:'Adult', age:35, sex:'f', emoji:'🙂', _default:true}];
+}
+function avgTargets(list){
+  const t = {v:0,f:0,g:0,p:0,d:0};
+  list.forEach(m => { const x = targetsFor(m); FG.forEach(({k}) => t[k] += x[k] / list.length); });
+  return t;
+}
+
+/* Plan generation */
+function rng(seed){ return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function allowed(m, fam, opts = {}){
+  if (fam.vegetarian && !m.veg) return false;
+  if (fam.noNuts && m.nuts) return false;
+  if (opts.lunchbox && (!m.lb || (fam.nutFreeLunch && m.nuts))) return false;
+  if (opts.crunch && !m.crunch) return false;
+  return true;
+}
+function pool(slot, fam, opts){
+  const s = ['crunch','recess','morning','after'].includes(slot) ? 'snack' : slot;
+  return MEALS.filter(m => m.slot === s && allowed(m, fam, opts) && (s !== 'breakfast' || !m.weekend || opts.weekend));
+}
+function addServes(total, m, pf){ FG.forEach(({k}) => total[k] += (m.s[k] || 0) * pf); }
+function generatePlan(seed){
+  const fam = family(), r = rng(seed), list = eaters();
+  // What one adult portion of the day needs to provide so that everyone, eating their own portion size, gets enough
+  const ref = {v:0,f:0,g:0,p:0,d:0}, refPf = 1;
+  list.forEach(m => { const t = targetsFor(m), pf = portionOf(t); FG.forEach(({k}) => ref[k] = Math.max(ref[k], t[k] / pf)); });
+  const start = mondayOf(new Date()), days = [];
+  const usedDinners = new Set();
+  const recent = {breakfast: [], lunch: [], snack: []};
+  const pick = (arr, avoid) => { const ok = arr.filter(m => !avoid.includes(m.id)); const a = ok.length ? ok : arr; return a[Math.floor(r() * a.length)]; };
+  for (let i = 0; i < 7; i++){
+    const d = new Date(start); d.setDate(start.getDate() + i);
+    const wd = d.getDay(), school = fam.schoolDays.includes(wd), weekend = wd === 0 || wd === 6;
+    const slots = {};
+    slots.breakfast = pick(pool('breakfast', fam, {weekend}), recent.breakfast.slice(-3)).id;
+    slots.lunch = pick(pool('lunch', fam, {lunchbox: school}), recent.lunch.slice(-3)).id;
+    const dinners = pool('dinner', fam, {});
+    slots.dinner = pick(dinners, dinners.length > usedDinners.size ? [...usedDinners] : []).id;
+    usedDinners.add(slots.dinner); recent.breakfast.push(slots.breakfast); recent.lunch.push(slots.lunch);
+    // Snacks fill the day's biggest gaps for a typical family member, fruit and veg first
+    const have = {v:0,f:0,g:0,p:0,d:0};
+    ['breakfast','lunch','dinner'].forEach(sl => addServes(have, MEAL[slots[sl]], refPf));
+    const snackSlots = school ? ['crunch','recess','after'] : ['morning','after'];
+    const usedToday = [];
+    for (const sl of snackSlots){
+      const cands = pool(sl, fam, {lunchbox: school && sl !== 'after', crunch: sl === 'crunch'}).filter(m => !usedToday.includes(m.id));
+      const scoreOf = m => FG.reduce((a, {k}) => a + Math.min((m.s[k] || 0) * refPf, Math.max(0, ref[k] - have[k])) * (k === 'v' || k === 'f' ? 1.3 : k === 'd' ? 1.1 : 1), 0)
+        - (recent.snack.slice(-4).includes(m.id) ? .4 : 0) + r() * .25;
+      const best = cands.sort((a, b) => scoreOf(b) - scoreOf(a))[0];
+      slots[sl] = best.id; usedToday.push(best.id); recent.snack.push(best.id);
+      addServes(have, best, refPf);
+    }
+    // Still short somewhere? Add simple extras to the day's meals, biggest gap first
+    const extras = {};
+    for (let n = 0; n < 4; n++){
+      const gaps = FG.map(({k}) => ({k, gap: (ref[k] - have[k]) * (k === 'v' || k === 'f' ? 1.2 : 1)})).filter(x => x.gap > .4).sort((a, b) => b.gap - a.gap);
+      if (!gaps.length) break;
+      let added = false;
+      for (const {k} of gaps){
+        const used = Object.values(extras).flat();
+        const x = EXTRAS.find(e => e.s[k] && !used.includes(e.id) && allowed(e, fam, {}) && e.at.some(sl => slots[sl]));
+        if (!x) continue;
+        const sl = x.at.find(sl => slots[sl] && (!school || !['recess','lunch','crunch'].includes(sl) || x.lb));
+        if (!sl) continue;
+        (extras[sl] = extras[sl] || []).push(x.id);
+        addServes(have, x, refPf); added = true; break;
+      }
+      if (!added) break;
+    }
+    days.push({date: ymd(d), school, slots, extras});
+  }
+  const plan = {week: ymd(start), seed, days};
+  writeJSON(PLAN_KEY, plan);
+  return plan;
+}
+function currentPlan(){
+  const p = readJSON(PLAN_KEY, null);
+  if (p && p.week === ymd(mondayOf(new Date())) && p.days && p.days.every(d => d.extras && Object.values(d.slots).every(id => MEAL[id]))) return p;
+  return generatePlan(Date.now() % 1e9);
+}
+function swapMeal(date, slot){
+  const plan = currentPlan(), fam = family(), day = plan.days.find(d => d.date === date);
+  if (!day) return;
+  const wd = new Date(date + 'T12:00:00').getDay();
+  const opts = {weekend: wd === 0 || wd === 6, lunchbox: day.school && slot !== 'after' && slot !== 'breakfast' && slot !== 'dinner', crunch: slot === 'crunch'};
+  const others = Object.entries(day.slots).filter(([s]) => s !== slot).map(([, id]) => id);
+  const cands = pool(slot, fam, opts).filter(m => !others.includes(m.id));
+  if (cands.length < 2) return;
+  const i = cands.findIndex(m => m.id === day.slots[slot]);
+  day.slots[slot] = cands[(i + 1) % cands.length].id;
+  writeJSON(PLAN_KEY, plan);
+}
+const slotItems = (day, sl) => [day.slots[sl], ...((day.extras || {})[sl] || [])].filter(Boolean);
+function dayServes(day, pf){
+  const t = {v:0,f:0,g:0,p:0,d:0};
+  Object.keys(day.slots).forEach(sl => slotItems(day, sl).forEach(id => addServes(t, MEAL[id], pf)));
+  return t;
+}
+
+/* Shopping list for the week */
+function shoppingList(plan){
+  const portions = eaters().reduce((a, m) => a + portionOf(targetsFor(m)), 0);
+  const items = {};
+  plan.days.forEach(day => Object.keys(day.slots).flatMap(sl => slotItems(day, sl)).forEach(id => MEAL[id].ing.forEach(([name, aisle, qty, unit]) => {
+    const key = name + '|' + unit;
+    items[key] = items[key] || {name, aisle, unit, qty: 0};
+    items[key].qty += qty * portions;
+  })));
+  return Object.values(items).sort((a, b) => AISLES.indexOf(a.aisle) - AISLES.indexOf(b.aisle) || a.name.localeCompare(b.name));
+}
+function qtyText(it){
+  const q = it.qty;
+  if (it.unit === 'g') return q >= 1000 ? `${(q / 1000).toFixed(1).replace(/\.0$/, '')} kg` : `${Math.ceil(q / 50) * 50} g`;
+  if (it.unit === 'mL') return q >= 1000 ? `${(q / 1000).toFixed(1).replace(/\.0$/, '')} L` : `${Math.ceil(q / 50) * 50} mL`;
+  if (it.unit === 'slice') { const loaves = Math.ceil(q / 14); return `${Math.ceil(q)} slices (about ${loaves} loa${loaves > 1 ? 'ves' : 'f'})`; }
+  if (it.unit === 'tin') return `${Math.ceil(q)} tin${Math.ceil(q) > 1 ? 's' : ''}`;
+  return `${Math.ceil(q)}`;
+}
+
+/* Daily tick-off */
+const tracks = () => readJSON(TRACK_KEY, {});
+function trackFor(date, id){
+  const t = tracks();
+  return (t[date] && t[date][id]) || {v:0,f:0,g:0,p:0,d:0,water:0,ate:{},tried:false};
+}
+function saveTrack(date, id, rec){
+  const t = tracks();
+  t[date] = t[date] || {};
+  t[date][id] = rec;
+  const keep = Object.keys(t).sort().slice(-60);           // about two months of history
+  writeJSON(TRACK_KEY, Object.fromEntries(keep.map(k => [k, t[k]])));
+}
+const met = (rec, tg, k) => rec[k] >= tg[k] - 0.01;
+function dayDone(rec, tg){ return FG.every(({k}) => met(rec, tg, k)); }
+function vegFruitStreak(m){
+  const tg = targetsFor(m); let n = 0;
+  const d = new Date(); d.setHours(12);
+  if (!(met(trackFor(today(), m.id), tg, 'v') && met(trackFor(today(), m.id), tg, 'f'))) d.setDate(d.getDate() - 1);
+  for (;;){ const r = trackFor(ymd(d), m.id); if (met(r, tg, 'v') && met(r, tg, 'f')) { n++; d.setDate(d.getDate() - 1); } else break; }
+  return n;
+}
+const STICKERS = ['🦄','🚀','🦖','🌈','🐨','🦘','⚽','🎨','🐬','🌟','🦋','🍉','🐢','🏆'];
+const stickerFor = (iso, id) => STICKERS[[...(iso + id)].reduce((a, c) => a + c.charCodeAt(0), 0) % STICKERS.length];
+const AVATARS = ['🦊','🐼','🐨','🦁','🐸','🐯','🐵','🦄','🐙','🐧','🙂','😎'];
+
+/* ---------- Planner screens ---------- */
+let planDay = null, planView = 'meals', todayWho = null;
+
+function servePills(s, pf = 1){
+  return FG.filter(({k}) => s[k]).map(({k, icon}) => `<span class="sp">${icon} ${fmtServe(s[k] * pf)}</span>`).join('');
+}
+const fmtServe = n => { const r = Math.round(n * 2) / 2; if (r === 0) return n > 0 ? '<½' : '0'; return (Math.floor(r) || '') + (r % 1 ? '½' : ''); };
+
+function renderPlan(){
+  const plan = currentPlan(), fam = family(), list = eaters();
+  if (!planDay || !plan.days.some(d => d.date === planDay)) planDay = plan.days.some(d => d.date === today()) ? today() : plan.days[0].date;
+  const day = plan.days.find(d => d.date === planDay);
+  const scans = loadHist().filter(h => h.b === 'g').slice(0, 6);
+  const tabs = [['meals','Meals'],['lunchbox','Lunchboxes'],['shop','Shopping list']];
+  let body = '';
+  if (planView === 'meals'){
+    const order = day.school ? SCHOOL_SLOTS : HOME_SLOTS;
+    body = `
+      <div class="daychips">${plan.days.map(d => `<button class="daychip${d.date === planDay ? ' on' : ''}${d.date === today() ? ' today' : ''}" data-plan-day="${d.date}">${dayLabel(d.date)}${d.school ? '<i>School</i>' : ''}</button>`).join('')}</div>
+      <ul class="meals">${order.map(sl => { const m = MEAL[day.slots[sl]]; return `
+        <li><div class="slot">${SLOT_NAMES[sl]}${day.school && ['crunch','recess','lunch'].includes(sl) ? ' <span class="lbtag">Lunchbox</span>' : ''}</div>
+          <div class="mname">${esc(m.name)}</div>
+          ${((day.extras || {})[sl] || []).map(x => `<div class="extra">+ ${esc(MEAL[x].name)}</div>`).join('')}
+          <div class="sps">${servePills(slotItems(day, sl).reduce((t, id) => { addServes(t, MEAL[id], 1); return t; }, {v:0,f:0,g:0,p:0,d:0}))}</div>
+          ${m.tip ? `<p class="mtip">${esc(m.tip)}</p>` : ''}
+          <button class="linkbtn" data-swap="${sl}">Swap</button></li>`; }).join('')}</ul>
+      <p class="muted small">Serves shown are for one adult portion.${list.some(m => portionOf(targetsFor(m)) < .9) ? ' Kids eat smaller portions; see each person below.' : ''}</p>
+      <h2>How the day adds up</h2>
+      ${list.map(m => { const tg = targetsFor(m), pf = portionOf(tg), got = dayServes(day, pf);
+        const gaps = FG.filter(({k}) => got[k] < tg[k] - .25);
+        return `<div class="person">
+          <div class="pname"><span class="av">${m.emoji || '🙂'}</span><b>${esc(m.name)}</b><span class="muted small">${m._default ? 'add your family to personalise' : portionWords(pf)}</span></div>
+          <div class="bars">${FG.map(({k, short}) => { const pct = Math.min(100, got[k] / tg[k] * 100); return `<div class="bar"><span>${short}</span><i><em style="width:${pct}%;background:${pct >= 95 ? 'var(--green)' : 'var(--amber)'}"></em></i><small>${fmtServe(got[k])} of ${fmtServe(tg[k])}</small></div>`; }).join('')}</div>
+          ${gaps.length ? `<p class="small" style="margin:6px 0 0">To top up: ${joinList(gaps.map(({k}) => TOPUP[k]))}.</p>` : '<p class="small" style="margin:6px 0 0;color:var(--green);font-weight:700">This day covers every food group.</p>'}
+        </div>`; }).join('')}
+      ${scans.length ? `<h2>Everyday foods you’ve scanned</h2><p class="muted small">Good snack swaps when you’re shopping.</p><div class="scanchips">${scans.map(h => `<button class="chip" data-code="${esc(h.code)}">${esc(h.name)}</button>`).join('')}</div>` : ''}
+      <button class="btn btn-ghost" id="newPlan" style="margin-top:22px">Make a new plan for this week</button>`;
+  } else if (planView === 'lunchbox'){
+    const schoolDays = plan.days.filter(d => d.school);
+    body = schoolDays.length ? `
+      <p class="muted small">Pack the night before. ${fam.nutFreeLunch ? 'All lunchbox ideas are nut-free.' : ''} Water is the best drink for school.</p>
+      ${schoolDays.map(d => `<div class="lbday"><h3>${dayLabel(d.date)}</h3>
+        ${['crunch','recess','lunch'].map(sl => `<div class="lbrow"><span class="slot">${SLOT_NAMES[sl]}</span><span>${slotItems(d, sl).map(id => esc(MEAL[id].name)).join(' + ')}</span></div>`).join('')}
+      </div>`).join('')}
+      <details class="tips"><summary>Lunchbox tips</summary>
+        <p>Use an insulated bag with an ice brick for anything with dairy, eggs or meat.</p>
+        <p>Freeze a water bottle overnight to keep things cold.</p>
+        <p>Let kids choose between two healthy options. They’re more likely to eat what they picked.</p>
+        <p>Skip packaged “fruit” snacks and muesli bars. Scan them first if you’re not sure.</p>
+      </details>`
+      : '<p>No school days this week. Set school days in the Family tab.</p>';
+  } else {
+    const items = shoppingList(plan), done = readJSON(SHOP_KEY, {})[plan.week] || {};
+    let aisle = '';
+    body = `<p class="muted small">For ${list.length === 1 && list[0]._default ? 'one adult' : 'your family of ' + list.length}, for the whole week. Quantities are a guide; round up to pack sizes.</p>
+      <ul class="shop">${items.map(it => { const key = it.name + '|' + it.unit; const head = it.aisle !== aisle ? `<li class="aisle-h">${(aisle = it.aisle)}</li>` : '';
+        return `${head}<li><label><input type="checkbox" data-shop="${esc(key)}" ${done[key] ? 'checked' : ''}><span>${esc(it.name)}</span><b>${qtyText(it)}</b></label></li>`; }).join('')}</ul>
+      <button class="btn btn-ghost" id="shareShop" style="margin-top:16px">Share or copy the list</button>
+      <p class="muted small" id="shareStatus"></p>`;
+  }
+  $('#plan').innerHTML = `
+    <h1 class="tabtitle">Meal plan</h1>
+    <p class="muted" style="margin:0 0 14px">Week of ${dayLabel(plan.week)}. Balanced across the five food groups for ${list[0]._default ? 'one adult' : 'your family'}.</p>
+    ${list[0]._default ? `<div class="note info">Add your family in the Family tab to plan the right serves for each person. <button class="linkbtn" data-tab="family">Add family</button></div>` : ''}
+    <div class="seg">${tabs.map(([k, l]) => `<button data-plan-view="${k}" class="${planView === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+    ${body}`;
+}
+
+function renderToday(){
+  const list = eaters(), date = today(), plan = currentPlan(), day = plan.days.find(d => d.date === date), fam = family();
+  if (!todayWho || !list.some(m => m.id === todayWho)) todayWho = list[0].id;
+  const m = list.find(x => x.id === todayWho), tg = targetsFor(m), pf = portionOf(tg), rec = trackFor(date, m.id);
+  const done = dayDone(rec, tg), streak = vegFruitStreak(m), cups = waterCups(m);
+  const mon = mondayOf(new Date());
+  const week = Array.from({length: 7}, (_, i) => { const d = new Date(mon); d.setDate(mon.getDate() + i); return ymd(d); });
+  const stickerDays = week.filter(iso => dayDone(trackFor(iso, m.id), tg)).length;
+  const kj = kjEstimate(m);
+  const order = day ? (day.school ? SCHOOL_SLOTS : HOME_SLOTS) : [];
+  const dots = (k, target) => { const n = Math.ceil(target), have = rec[k];
+    return Array.from({length: Math.max(n, Math.ceil(have))}, (_, i) => { const fill = have >= i + 1 ? 'full' : have > i ? 'half' : ''; return `<button class="dot ${fill}${i >= n ? ' extra' : ''}" data-dot="${k}" data-i="${i}" aria-label="${i + 1}"></button>`; }).join(''); };
+  $('#today').innerHTML = `
+    <h1 class="tabtitle">Today</h1>
+    <div class="who">${list.map(x => `<button class="whochip${x.id === m.id ? ' on' : ''}" data-who="${x.id}"><span class="av">${x.emoji || '🙂'}</span>${esc(x.name)}</button>`).join('')}</div>
+    ${done ? `<div class="celebrate"><span class="bigsticker">${stickerFor(date, m.id)}</span><div><b>Sticker earned!</b><br>Every food group covered today.</div></div>` : ''}
+    ${streak >= 2 ? `<p class="streak">🔥 Veg and fruit ${streak} days in a row</p>` : ''}
+    ${day ? `<h2>Today’s plan</h2><p class="muted small">Tick what ${m._default ? 'you' : esc(m.name)} ate and the food groups fill in.</p>
+      <ul class="ate">${order.map(sl => { const meal = MEAL[day.slots[sl]]; return `<li><label><input type="checkbox" data-ate="${sl}" ${rec.ate[sl] ? 'checked' : ''}><span><small>${SLOT_NAMES[sl]}</small>${slotItems(day, sl).map(id => esc(MEAL[id].name)).join(' + ')}</span></label></li>`; }).join('')}</ul>` : ''}
+    <h2>Food groups</h2>
+    <p class="muted small">Tap a circle to fill it in. Each circle is one serve.</p>
+    <div class="groups">${FG.map(({k, name, icon}) => `<div class="grp${met(rec, tg, k) ? ' met' : ''}"><div class="gtop"><span>${icon} ${name}</span><b>${met(rec, tg, k) ? '⭐' : `${fmtServe(rec[k])} of ${fmtServe(tg[k])}`}</b></div><div class="dots">${dots(k, tg[k])}</div></div>`).join('')}
+      <div class="grp${rec.water >= cups ? ' met' : ''}"><div class="gtop"><span>💧 Water (cups)</span><b>${rec.water >= cups ? '⭐' : `${rec.water} of ${cups}`}</b></div><div class="dots">${Array.from({length: cups}, (_, i) => `<button class="dot water ${rec.water > i ? 'full' : ''}" data-water="${i}" aria-label="Cup ${i + 1}"></button>`).join('')}</div></div>
+    </div>
+    <label class="check tried"><input type="checkbox" id="triedNew" ${rec.tried ? 'checked' : ''}> Tried a new food today ${rec.tried ? '🌟' : ''}</label>
+    <h2>This week’s stickers</h2>
+    <div class="week">${week.map(iso => { const ok = dayDone(trackFor(iso, m.id), tg); return `<div class="wd${iso === date ? ' now' : ''}"><small>${DAY_SHORT[new Date(iso + 'T12:00:00').getDay()]}</small><span>${ok ? stickerFor(iso, m.id) : trackFor(iso, m.id).tried ? '🌟' : '·'}</span></div>`; }).join('')}</div>
+    ${fam.reward ? `<p class="reward">${stickerDays >= 5 ? '🎉 ' : ''}${stickerDays} of 5 sticker days for: <b>${esc(fam.reward)}</b></p>` : `<p class="muted small">Set a family reward for 5 sticker days in the Family tab, like a trip to the park or choosing a weekend activity.</p>`}
+    ${kj && !kidsMode() ? `<p class="muted small" style="margin-top:16px">${esc(m.name)}’s energy guide: about ${kj.toLocaleString('en-AU')} kJ a day (an estimate). Packaged foods use 8,700 kJ as an average adult.</p>` : ''}`;
+}
+
+function memberForm(m = {}){
+  const adult = Number(m.age) >= 19;
+  return `<div class="mform" data-id="${esc(m.id || '')}">
+    <div class="field"><label>Name</label><input data-f="name" value="${esc(m.name || '')}" placeholder="First name or nickname"></div>
+    <div class="field"><label>Picture</label><div class="avpick">${AVATARS.map(a => `<button type="button" class="${(m.emoji || AVATARS[0]) === a ? 'on' : ''}" data-av="${a}">${a}</button>`).join('')}</div></div>
+    <div class="grid2">
+      <div class="field"><label>Age (years)</label><input data-f="age" inputmode="numeric" value="${esc(m.age ?? '')}"></div>
+      <div class="field"><label>Sex</label><select data-f="sex"><option value="f" ${m.sex === 'f' ? 'selected' : ''}>Female</option><option value="m" ${m.sex === 'm' ? 'selected' : ''}>Male</option></select></div>
+    </div>
+    <div class="adultonly ${adult ? '' : 'hidden'}">
+      <div class="grid2">
+        <div class="field"><label>Weight in kg (optional)</label><input data-f="weight" inputmode="decimal" value="${esc(m.weight ?? '')}"></div>
+        <div class="field"><label>Activity</label><select data-f="activity">${Object.entries(ACTIVITY).map(([v, l]) => `<option value="${v}" ${Number(m.activity || 1.6) === Number(v) ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+      </div>
+      <p class="muted small" style="margin-top:-4px">Weight is only used to estimate an adult’s kilojoule needs, and stays on this phone.</p>
+    </div>
+    <div class="row2"><button class="btn btn-main" data-save-member>Save</button><button class="btn btn-ghost" data-cancel-member>Cancel</button></div>
+  </div>`;
+}
+let editingMember = null;
+function renderFamily(){
+  const fam = family();
+  const mem = fam.members.map(m => { const tg = targetsFor(m), kj = kjEstimate(m);
+    if (editingMember === m.id) return memberForm(m);
+    return `<div class="member"><div class="pname"><span class="av">${m.emoji || '🙂'}</span><b>${esc(m.name)}</b><span class="muted small">${m.age} years</span>
+      <button class="linkbtn" data-edit-member="${m.id}">Edit</button></div>
+      ${tg ? `<div class="sps">${FG.map(({k, icon, short}) => `<span class="sp">${icon} ${fmtServe(tg[k])} ${short}</span>`).join('')}<span class="sp">💧 ${waterCups(m)} cups</span></div>
+      <p class="muted small" style="margin:6px 0 0">Portions: ${portionWords(portionOf(tg))}.${kj && !kidsMode() ? ` Energy guide: about ${kj.toLocaleString('en-AU')} kJ a day.` : ''}</p>`
+      : `<p class="small">Serves are for ages 2 and up. For younger children, follow your child health nurse’s advice.</p>`}
+    </div>`; }).join('');
+  $('#family').innerHTML = `
+    <h1 class="tabtitle">Family</h1>
+    <p class="muted" style="margin:0 0 14px">Each person’s daily serves come from the Australian Dietary Guidelines. Kids are planned by serves, not kilojoules.</p>
+    ${mem || '<p>No one added yet.</p>'}
+    ${editingMember === 'new' ? memberForm({}) : `<button class="btn btn-main" data-add-member style="margin-top:14px">Add a person</button>`}
+    <h2>Settings</h2>
+    <div class="field"><label>School days</label><div class="schooldays">${[1,2,3,4,5,6,0].map(d => `<label><input type="checkbox" data-schoolday="${d}" ${fam.schoolDays.includes(d) ? 'checked' : ''}>${DAY_SHORT[d]}</label>`).join('')}</div>
+      <p class="muted small">Untick days during school holidays, then make a new plan.</p></div>
+    <label class="check"><input type="checkbox" data-setting="nutFreeLunch" ${fam.nutFreeLunch ? 'checked' : ''}> Nut-free lunchboxes</label>
+    <label class="check"><input type="checkbox" data-setting="noNuts" ${fam.noNuts ? 'checked' : ''}> No nuts at all (allergy)</label>
+    <label class="check"><input type="checkbox" data-setting="vegetarian" ${fam.vegetarian ? 'checked' : ''}> Vegetarian meals only</label>
+    <div class="field"><label for="rewardText">Reward for 5 sticker days in a week</label><input id="rewardText" value="${esc(fam.reward)}" placeholder="e.g. a trip to the beach, or choosing Saturday’s activity"></div>
+    <p class="muted small">Pick rewards that aren’t food, so treats don’t become prizes.</p>
+    <details class="tips"><summary>What’s a serve?</summary>
+      <p><b>🥦 Veg:</b> ½ cup cooked veg or legumes, 1 cup salad, or ½ a medium potato.</p>
+      <p><b>🍎 Fruit:</b> 1 apple, banana, orange or pear, 2 small fruits like mandarins or kiwifruit, or 1 cup of chopped fruit.</p>
+      <p><b>🍞 Grains:</b> 1 slice of bread, ½ a roll or wrap, ½ cup cooked rice, pasta or porridge, or ⅔ cup of cereal.</p>
+      <p><b>🥚 Protein:</b> 65g cooked lean red meat, 80g cooked chicken, 100g cooked fish, 2 eggs, 1 cup legumes, or 30g nuts.</p>
+      <p><b>🥛 Dairy:</b> 1 cup of milk, ¾ cup of yoghurt, or 2 slices of cheese.</p>
+      <p class="muted">From the Australian Dietary Guidelines. Pregnancy and breastfeeding have different needs: see eatforhealth.gov.au or your GP.</p>
+    </details>`;
+}
+
+function saveMemberFrom(el){
+  const fam = family(), id = el.dataset.id || ('m' + Date.now().toString(36));
+  const val = f => (el.querySelector(`[data-f="${f}"]`) || {}).value;
+  const age = Math.round(Number(val('age')));
+  if (!val('name').trim() || !(age >= 0 && age < 120)) { alert('Add a name and an age.'); return false; }
+  const av = el.querySelector('.avpick .on');
+  const m = {id, name: val('name').trim(), age, sex: val('sex'), emoji: av ? av.dataset.av : AVATARS[0],
+    weight: age >= 19 && val('weight') ? Number(val('weight')) : null, activity: age >= 19 ? Number(val('activity')) : null};
+  const i = fam.members.findIndex(x => x.id === id);
+  if (i >= 0) fam.members[i] = m; else fam.members.push(m);
+  saveFamily(fam);
+  return true;
+}
+
+document.addEventListener('click', e => {
+  const t = e.target;
+  const tab = t.closest('[data-tab]');
+  if (tab) return switchTab(tab.dataset.tab);
+  if (t.closest('[data-plan-day]')) { planDay = t.closest('[data-plan-day]').dataset.planDay; return renderPlan(); }
+  if (t.closest('[data-plan-view]')) { planView = t.closest('[data-plan-view]').dataset.planView; return renderPlan(); }
+  if (t.closest('[data-swap]')) { swapMeal(planDay, t.closest('[data-swap]').dataset.swap); return renderPlan(); }
+  if (t.closest('#newPlan')) { generatePlan(Date.now() % 1e9); return renderPlan(); }
+  if (t.closest('#shareShop')) {
+    const plan = currentPlan(); let aisle = '';
+    const text = 'Shopping list\n' + shoppingList(plan).map(it => (it.aisle !== aisle ? `\n${(aisle = it.aisle)}\n` : '') + `- ${it.name}: ${qtyText(it)}`).join('\n');
+    if (navigator.share) navigator.share({title: 'Shopping list', text}).catch(() => {});
+    else if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => { $('#shareStatus').textContent = 'Copied.'; }, () => {});
+    return;
+  }
+  if (t.closest('[data-who]')) { todayWho = t.closest('[data-who]').dataset.who; return renderToday(); }
+  if (t.closest('[data-dot]')) {
+    const b = t.closest('[data-dot]'), k = b.dataset.dot, i = Number(b.dataset.i), rec = trackFor(today(), todayWho);
+    rec[k] = rec[k] >= i + 1 ? i : i + 1;
+    saveTrack(today(), todayWho, rec); return renderToday();
+  }
+  if (t.closest('[data-water]')) {
+    const i = Number(t.closest('[data-water]').dataset.water), rec = trackFor(today(), todayWho);
+    rec.water = rec.water >= i + 1 ? i : i + 1;
+    saveTrack(today(), todayWho, rec); return renderToday();
+  }
+  if (t.closest('[data-add-member]')) { editingMember = 'new'; return renderFamily(); }
+  if (t.closest('[data-edit-member]')) { editingMember = t.closest('[data-edit-member]').dataset.editMember; return renderFamily(); }
+  if (t.closest('[data-cancel-member]')) { editingMember = null; return renderFamily(); }
+  if (t.closest('[data-save-member]')) { if (saveMemberFrom(t.closest('.mform'))) { editingMember = null; renderFamily(); } return; }
+  if (t.closest('[data-av]')) { const p = t.closest('.avpick'); p.querySelectorAll('button').forEach(x => x.classList.remove('on')); t.closest('[data-av]').classList.add('on'); return; }
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.matches('[data-ate]')) {
+    const sl = t.dataset.ate, rec = trackFor(today(), todayWho), m = eaters().find(x => x.id === todayWho);
+    const day = currentPlan().days.find(d => d.date === today()), pf = portionOf(targetsFor(m)), sign = t.checked ? 1 : -1;
+    const add = {v:0,f:0,g:0,p:0,d:0}; slotItems(day, sl).forEach(id => addServes(add, MEAL[id], pf));
+    FG.forEach(({k}) => { rec[k] = Math.max(0, Math.round((rec[k] + sign * add[k]) * 2) / 2); });
+    rec.ate[sl] = t.checked;
+    saveTrack(today(), todayWho, rec); return renderToday();
+  }
+  if (t.id === 'triedNew') { const rec = trackFor(today(), todayWho); rec.tried = t.checked; saveTrack(today(), todayWho, rec); return renderToday(); }
+  if (t.matches('[data-shop]')) { const all = readJSON(SHOP_KEY, {}), w = currentPlan().week; all[w] = all[w] || {}; all[w][t.dataset.shop] = t.checked; writeJSON(SHOP_KEY, {[w]: all[w]}); return; }
+  if (t.matches('[data-schoolday]')) { const fam = family(), d = Number(t.dataset.schoolday); fam.schoolDays = t.checked ? [...new Set([...fam.schoolDays, d])] : fam.schoolDays.filter(x => x !== d); saveFamily(fam); return; }
+  if (t.matches('[data-setting]')) { const fam = family(); fam[t.dataset.setting] = t.checked; saveFamily(fam); return; }
+  if (t.id === 'rewardText') { const fam = family(); fam.reward = t.value.trim(); saveFamily(fam); return; }
+  if (t.matches('.mform [data-f="age"]')) { t.closest('.mform').querySelector('.adultonly').classList.toggle('hidden', !(Number(t.value) >= 19)); }
+});
+document.addEventListener('input', e => { if (e.target.matches('.mform [data-f="age"]')) e.target.closest('.mform').querySelector('.adultonly').classList.toggle('hidden', !(Number(e.target.value) >= 19)); });
+
+/* Tabs */
+const TAB_VIEWS = {scan:['home','loading','result','label','paste','review'], plan:['plan'], today:['today'], family:['family']};
+let currentTab = 'scan';
+function switchTab(tab){
+  if (tab === 'scan') return show('home');
+  if (tab === 'plan') renderPlan();
+  if (tab === 'today') renderToday();
+  if (tab === 'family') { editingMember = null; renderFamily(); }
+  show(tab);
+}
 
 /* ---------- Events ---------- */
 $('#scanBtn').onclick = startScan;
@@ -1113,6 +2447,8 @@ $('#manualBtn').onclick = () => { const v = $('#manualCode').value; $('#manualCo
 $('#manualCode').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); $('#manualBtn').click(); } });
 $('#clearHist').onclick = () => { if (confirm('Clear all recent scans?')){ saveHist([]); renderHist(); } };
 $('#noBarcode').onclick = () => startPaste(null);
+$('#kidsToggle').checked = kidsMode();
+$('#kidsToggle').onchange = e => { try { localStorage.setItem(KIDS_KEY, e.target.checked ? '1' : '0'); } catch {} renderHist(); };
 $('#setUrl').value = getSettings().url || '';
 $('#setToken').value = getSettings().token || '';
 $('#saveSetup').onclick = () => {
@@ -1156,7 +2492,7 @@ document.addEventListener('click', e => {
 renderHist();
 
 /* ---------- Installable app ---------- */
-const APP_VERSION = '2026.10.09';
+const APP_VERSION = '2026.10.11.3';
 $('#appVersion').textContent = `App version ${APP_VERSION}`;
 const INSTALL_KEY = 'pantrycheck.installDismissed';
 const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
